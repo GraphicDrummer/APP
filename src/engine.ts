@@ -12,7 +12,8 @@ export type CellState = 'soft' | 'blocked'
 export interface Person {
   id: string
   role: Role
-  cells: Record<string, CellState>
+  // 표시된 칸만 존재하는 희소 맵 — 키가 없으면 '가능'
+  cells: Partial<Record<string, CellState>>
 }
 
 export interface WindowEval {
