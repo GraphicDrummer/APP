@@ -12,13 +12,9 @@ const inputCls =
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
-// 15분 단위 시간 목록: 00:00, 00:15 … 23:45
-// (datetime-local의 step은 브라우저 피커의 분 목록을 제한하지 못해서 select로 강제한다)
-const QUARTER_TIMES = Array.from({ length: 24 * 4 }, (_, i) => {
-  const h = Math.floor(i / 4)
-  const m = (i % 4) * 15
-  return `${pad2(h)}:${pad2(m)}`
-})
+// 마감 시각은 시(00~23)·분(00/15/30/45) 드롭다운 2개로 강제 — 24시간제
+const DEADLINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
+const DEADLINE_MINUTES = [0, 15, 30, 45]
 
 // 주최자용 모임 생성 화면 — 저장되면 공유 링크를 보여준다
 export function CreateMeetingPage() {
@@ -30,7 +26,8 @@ export function CreateMeetingPage() {
   const [hourStart, setHourStart] = useState(9)
   const [hourEnd, setHourEnd] = useState(18)
   const [deadlineDate, setDeadlineDate] = useState('')
-  const [deadlineTime, setDeadlineTime] = useState('18:00')
+  const [deadlineHour, setDeadlineHour] = useState(18)
+  const [deadlineMinute, setDeadlineMinute] = useState(0)
   const [people, setPeople] = useState<DraftPerson[]>([])
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -82,7 +79,9 @@ export function CreateMeetingPage() {
         hourStart,
         hourEnd,
         deadline: deadlineDate
-          ? new Date(`${deadlineDate}T${deadlineTime}`).toISOString()
+          ? new Date(
+              `${deadlineDate}T${pad2(deadlineHour)}:${pad2(deadlineMinute)}:00`,
+            ).toISOString()
           : undefined,
       })
       for (const p of people) {
@@ -225,15 +224,28 @@ export function CreateMeetingPage() {
                   onChange={(e) => setDeadlineDate(e.target.value)}
                 />
                 <select
-                  data-testid="deadline-time"
-                  aria-label="마감 시각 (15분 단위)"
+                  data-testid="deadline-hour"
+                  aria-label="마감 시 (24시간제)"
                   className={inputCls}
-                  value={deadlineTime}
-                  onChange={(e) => setDeadlineTime(e.target.value)}
+                  value={deadlineHour}
+                  onChange={(e) => setDeadlineHour(Number(e.target.value))}
                 >
-                  {QUARTER_TIMES.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {DEADLINE_HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {pad2(h)}시
+                    </option>
+                  ))}
+                </select>
+                <select
+                  data-testid="deadline-minute"
+                  aria-label="마감 분 (15분 단위)"
+                  className={inputCls}
+                  value={deadlineMinute}
+                  onChange={(e) => setDeadlineMinute(Number(e.target.value))}
+                >
+                  {DEADLINE_MINUTES.map((m) => (
+                    <option key={m} value={m}>
+                      {pad2(m)}분
                     </option>
                   ))}
                 </select>
