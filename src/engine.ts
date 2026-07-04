@@ -2,7 +2,8 @@
 // PRD 2.3 / 개발 플랜 3.5 참고. ttak_engine_demo.html의 recommend() 로직을 그대로 이식.
 
 export const DAYS = ['월', '화', '수', '목', '금'] as const
-export const HOURS = [9, 10, 11, 13, 14, 15, 16, 17] as const // 12시(점심) 제외
+// 기본 시간대(데모용). 특정 시각에 의미를 두지 않는다 — 실제 모임은 주최자가 범위를 지정.
+export const HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17] as const
 
 export type Day = (typeof DAYS)[number]
 export type Hour = (typeof HOURS)[number]
@@ -79,10 +80,10 @@ export function evalWindow(d: number, h: number, ppl: Person[]): WindowEval {
   return { d, h, reqBlocked, reqAvail, softHits, optAvail, softNames, missingOpt, blockingReq }
 }
 
-export function allWindows(ppl: Person[]): WindowEval[] {
+export function allWindows(ppl: Person[], hours: readonly number[] = HOURS): WindowEval[] {
   const out: WindowEval[] = []
   for (let d = 0; d < DAYS.length; d++) {
-    for (const h of HOURS) out.push(evalWindow(d, h, ppl))
+    for (const h of hours) out.push(evalWindow(d, h, ppl))
   }
   return out
 }
@@ -97,10 +98,10 @@ export function sortW(a: WindowEval, b: WindowEval): number {
   )
 }
 
-export function recommend(ppl: Person[]): RecommendResult {
+export function recommend(ppl: Person[], hours: readonly number[] = HOURS): RecommendResult {
   const optCount = ppl.filter((p) => p.role === 'optional').length
   const reqCount = ppl.filter((p) => p.role === 'required').length
-  const ws = allWindows(ppl).sort(sortW)
+  const ws = allWindows(ppl, hours).sort(sortW)
 
   const perfect = ws.filter((w) => w.reqBlocked === 0 && w.softHits === 0 && w.optAvail === optCount)
 
@@ -125,7 +126,7 @@ export function recommend(ppl: Person[]): RecommendResult {
     const others = ppl.filter((q) => q !== p)
     const optC2 = others.filter((q) => q.role === 'optional').length
     const gain =
-      allWindows(others).filter((w) => w.reqBlocked === 0 && w.softHits === 0 && w.optAvail === optC2).length -
+      allWindows(others, hours).filter((w) => w.reqBlocked === 0 && w.softHits === 0 && w.optAvail === optC2).length -
       perfect.length
     if (gain > bestGain) {
       bestGain = gain

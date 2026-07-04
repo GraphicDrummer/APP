@@ -5,6 +5,10 @@ type DisplayState = CellState | 'free'
 interface Props {
   person: Person
   onCycleCell: (d: number, h: number) => void
+  /** 표시할 시간 슬롯 시작 시각들. 생략하면 기본(9~17시) */
+  hours?: readonly number[]
+  /** 있으면 요일 헤더가 버튼이 되고, 누르면 그 요일 전체 칸을 한 번에 순환 */
+  onCycleDay?: (d: number) => void
 }
 
 const CELL_STYLE: Record<string, string> = {
@@ -16,7 +20,7 @@ const CELL_STYLE: Record<string, string> = {
 const CELL_LABEL: Record<string, string> = { free: '', soft: '별로', blocked: '불가' }
 
 // 요일×시간 그리드 — 칸을 누르면 가능 → 별로 → 불가 순으로 순환
-export function AvailabilityGrid({ person, onCycleCell }: Props) {
+export function AvailabilityGrid({ person, onCycleCell, hours = HOURS, onCycleDay }: Props) {
   return (
     <div className="bg-white border border-neutral-200 rounded-xl p-3">
       <p className="text-sm font-bold mb-2">
@@ -27,22 +31,30 @@ export function AvailabilityGrid({ person, onCycleCell }: Props) {
         <thead>
           <tr>
             <th />
-            {DAYS.map((d) => (
+            {DAYS.map((d, i) => (
               <th key={d} className="text-[11px] font-bold text-neutral-500 pb-0.5">
-                {d}
+                {onCycleDay ? (
+                  <button
+                    type="button"
+                    data-testid={`day-${i}`}
+                    aria-label={`${d}요일 전체 순환`}
+                    onClick={() => onCycleDay(i)}
+                    className="w-full rounded-md border border-neutral-200 bg-neutral-50 py-0.5 cursor-pointer"
+                  >
+                    {d}
+                  </button>
+                ) : (
+                  d
+                )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {HOURS.map((h) => (
+          {hours.map((h) => (
             <tr key={h}>
-              <td
-                className={`text-[10.5px] text-right pr-1 whitespace-nowrap w-9 ${
-                  h === 13 ? 'text-amber-700 font-bold' : 'text-neutral-500'
-                }`}
-              >
-                {h === 13 ? '점심후' : `${h}:00`}
+              <td className="text-[10.5px] text-right pr-1 whitespace-nowrap w-9 text-neutral-500">
+                {h}:00
               </td>
               {DAYS.map((_, d) => {
                 const s: DisplayState = person.cells[key(d, h)] ?? 'free'

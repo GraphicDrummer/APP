@@ -13,6 +13,10 @@ export type MeetingRow = {
   /** Postgres daterange 문자열, 예: "[2026-07-06,2026-07-11)" */
   date_range: string
   duration_slots: number
+  /** 설문 시간 범위 시작 시각 (0~23) */
+  hour_start: number
+  /** 설문 시간 범위 끝 시각 — 배타적 (1~24) */
+  hour_end: number
   /** ISO 8601, null이면 마감 없음 */
   deadline: string | null
   /** 공유 링크(/m/:code)용 짧은 코드 */

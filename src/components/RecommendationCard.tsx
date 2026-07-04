@@ -30,9 +30,6 @@ export function RecommendationCard({ result: R, confirmed, onConfirm }: Props) {
         </p>
         <div className="flex flex-wrap gap-1.5 mt-2.5 text-xs font-semibold">
           <span className="rounded-full bg-blue-50 text-blue-800 px-2 py-0.5">전원 참석</span>
-          {w.h !== 13 && (
-            <span className="rounded-full bg-blue-50 text-blue-800 px-2 py-0.5">점심 직후 아님</span>
-          )}
           {R.perfect.length > 1 ? (
             <span className="rounded-full bg-blue-50 text-blue-800 px-2 py-0.5">
               대안 {R.perfect.length - 1}개 더 있음
@@ -82,7 +79,7 @@ export function RecommendationCard({ result: R, confirmed, onConfirm }: Props) {
               </span>
             </p>
             <p className="text-xs text-amber-700 mt-0.5">
-              비용: {R.l1.softNames.join(', ')} — 점심 직후 등 피하고 싶은 시간
+              비용: {R.l1.softNames.join(', ')} — 피하고 싶은 시간이에요
             </p>
           </div>
         )}

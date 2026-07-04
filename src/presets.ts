@@ -30,8 +30,8 @@ export function presetBase(): Person[] {
   ;[15, 16, 17].forEach((h) => set(byId('D'), 0, h, 'blocked'))
   // E(선택): 금 부재
   HOURS.forEach((h) => set(byId('E'), 4, h, 'blocked'))
-  // F(선택): 오전 불가 (13시부터 가능)
-  DAYS.forEach((_, d) => [9, 10, 11].forEach((h) => set(byId('F'), d, h, 'blocked')))
+  // F(선택): 13시부터 가능
+  DAYS.forEach((_, d) => [9, 10, 11, 12].forEach((h) => set(byId('F'), d, h, 'blocked')))
 
   return P
 }

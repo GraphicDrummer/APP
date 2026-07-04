@@ -19,9 +19,9 @@ describe('recommend — 기본 시나리오', () => {
   })
 
   it('완화 사다리 2단계는 선택 인원 1명씩 제외한 두 후보', () => {
-    expect(R.l2.map(fmt)).toEqual(['월 11:00', '금 14:00'])
+    expect(R.l2.map(fmt)).toEqual(['월 11:00', '월 12:00'])
     expect(R.l2[0].missingOpt).toEqual(['F'])
-    expect(R.l2[1].missingOpt).toEqual(['E'])
+    expect(R.l2[1].missingOpt).toEqual(['F'])
   })
 
   it('병목은 B — 제외하면 가능한 완벽 슬롯이 8개 늘어남', () => {
@@ -40,7 +40,7 @@ describe('recommend — 변수 발생 시나리오 (D의 월 오후 연장)', ()
   it('그래도 완화 사다리는 그대로 제공됨 (월요일 14시는 사다리 후보가 아니었으므로 영향 없음)', () => {
     expect(fmt(R.l1!)).toBe('월 13:00')
     expect(R.l1!.softNames).toEqual(['C'])
-    expect(R.l2.map(fmt)).toEqual(['월 11:00', '금 14:00'])
+    expect(R.l2.map(fmt)).toEqual(['월 11:00', '월 12:00'])
   })
 
   it('병목은 여전히 B', () => {

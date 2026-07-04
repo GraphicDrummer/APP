@@ -40,6 +40,15 @@ export function MeetingPage() {
     [meeting],
   )
 
+  // 주최자가 지정한 설문 시간 범위 (hour_end는 배타적)
+  const hours = useMemo(
+    () =>
+      meeting
+        ? Array.from({ length: meeting.hour_end - meeting.hour_start }, (_, i) => meeting.hour_start + i)
+        : [],
+    [meeting],
+  )
+
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -79,7 +88,10 @@ export function MeetingPage() {
     void load()
   }, [load])
 
-  const result = useMemo(() => (people.length > 0 ? recommend(people) : null), [people])
+  const result = useMemo(
+    () => (people.length > 0 && hours.length > 0 ? recommend(people, hours) : null),
+    [people, hours],
+  )
 
   const cycleCell = (d: number, h: number) => {
     const k = `${d}-${h}`
@@ -90,6 +102,26 @@ export function MeetingPage() {
         const next = NEXT_STATE[cells[k] ?? 'free']
         if (next) cells[k] = next
         else delete cells[k]
+        return { ...p, cells }
+      }),
+    )
+    setSaveState('idle')
+  }
+
+  // 요일 헤더 클릭 — 그 요일 전체 칸을 한 번에 순환.
+  // 열이 한 가지 상태로 통일돼 있으면 다음 상태로, 섞여 있으면 '별로'로 모은다.
+  const cycleDay = (d: number) => {
+    setPeople((prev) =>
+      prev.map((p, i) => {
+        if (i !== selected) return p
+        const states = hours.map((h) => p.cells[`${d}-${h}`] ?? 'free')
+        const uniform = states.every((s) => s === states[0]) ? states[0] : null
+        const next = uniform ? NEXT_STATE[uniform] : 'soft'
+        const cells = { ...p.cells }
+        for (const h of hours) {
+          if (next) cells[`${d}-${h}`] = next
+          else delete cells[`${d}-${h}`]
+        }
         return { ...p, cells }
       }),
     )
@@ -157,7 +189,8 @@ export function MeetingPage() {
             {meeting?.title}
           </h1>
           <p className="text-[13px] text-neutral-500">
-            {range?.start} ~ {range?.end} · {meeting?.duration_slots}시간
+            {range?.start} ~ {range?.end} · {meeting?.hour_start}:00~{meeting?.hour_end}:00 ·{' '}
+            {meeting?.duration_slots}시간
             {meeting?.deadline &&
               ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
           </p>
@@ -182,7 +215,12 @@ export function MeetingPage() {
 
         {people[selected] && (
           <div className="mt-2.5">
-            <AvailabilityGrid person={people[selected]} onCycleCell={cycleCell} />
+            <AvailabilityGrid
+              person={people[selected]}
+              onCycleCell={cycleCell}
+              hours={hours}
+              onCycleDay={cycleDay}
+            />
           </div>
         )}
 

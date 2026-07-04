@@ -62,6 +62,10 @@ export interface CreateMeetingInput {
   /** 'YYYY-MM-DD' — 후보 범위 끝(포함) */
   dateEnd: string
   durationSlots?: number
+  /** 설문 시간 범위 시작 (0~23). 기본 9 */
+  hourStart?: number
+  /** 설문 시간 범위 끝 — 배타적 (1~24). 기본 18 */
+  hourEnd?: number
   /** ISO 8601 — 응답 마감. 생략하면 무기한 */
   deadline?: string
 }
@@ -75,6 +79,8 @@ export async function createMeeting(input: CreateMeetingInput): Promise<MeetingR
         organizer_name: input.organizerName,
         date_range: toDateRange(input.dateStart, input.dateEnd),
         duration_slots: input.durationSlots ?? 1,
+        hour_start: input.hourStart ?? 9,
+        hour_end: input.hourEnd ?? 18,
         deadline: input.deadline ?? null,
         share_code: generateShareCode(),
       })

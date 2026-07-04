@@ -10,6 +10,10 @@ create table public.meetings (
   date_range     daterange not null,
   -- 모임 길이 — 1시간 슬롯 몇 칸짜리인지
   duration_slots integer not null default 1 check (duration_slots >= 1),
+  -- 설문 시간 범위. hour_end는 배타적 끝(09~18이면 마지막 슬롯 시작 17:00)
+  hour_start     integer not null default 9 check (hour_start >= 0 and hour_start <= 23),
+  hour_end       integer not null default 18 check (hour_end >= 1 and hour_end <= 24),
+  constraint meetings_hour_range check (hour_end > hour_start),
   -- 참여자 응답 마감 시각 (없으면 무기한)
   deadline       timestamptz,
   -- 공유 링크(/m/:code)용 추측 불가능한 짧은 코드 — 클라이언트가 생성

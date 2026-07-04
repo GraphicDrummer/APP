@@ -10,6 +10,16 @@ interface DraftPerson {
 const inputCls =
   'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:border-neutral-900'
 
+const pad2 = (n: number) => String(n).padStart(2, '0')
+
+/** datetime-local 값의 분을 00/15/30/45 중 가장 가까운 값으로 스냅 */
+function snapToQuarter(value: string): string {
+  const m = value.match(/^(.+T\d{2}):(\d{2})$/)
+  if (!m) return value
+  const snapped = Math.round(Number(m[2]) / 15) * 15
+  return snapped === 60 ? `${m[1]}:45` : `${m[1]}:${pad2(snapped)}`
+}
+
 // 주최자용 모임 생성 화면 — 저장되면 공유 링크를 보여준다
 export function CreateMeetingPage() {
   const [title, setTitle] = useState('')
@@ -17,6 +27,8 @@ export function CreateMeetingPage() {
   const [dateStart, setDateStart] = useState('')
   const [dateEnd, setDateEnd] = useState('')
   const [durationSlots, setDurationSlots] = useState(1)
+  const [hourStart, setHourStart] = useState(9)
+  const [hourEnd, setHourEnd] = useState(18)
   const [deadline, setDeadline] = useState('')
   const [people, setPeople] = useState<DraftPerson[]>([])
   const [newName, setNewName] = useState('')
@@ -53,6 +65,10 @@ export function CreateMeetingPage() {
       setError('끝 날짜가 시작 날짜보다 빠를 수 없어요.')
       return
     }
+    if (hourEnd <= hourStart) {
+      setError('설문 시간 범위의 끝이 시작보다 늦어야 해요.')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -62,6 +78,8 @@ export function CreateMeetingPage() {
         dateStart,
         dateEnd,
         durationSlots,
+        hourStart,
+        hourEnd,
         deadline: deadline ? new Date(deadline).toISOString() : undefined,
       })
       for (const p of people) {
@@ -197,11 +215,46 @@ export function CreateMeetingPage() {
               <input
                 data-testid="deadline"
                 type="datetime-local"
+                step={900}
                 className={inputCls}
                 value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
+                onChange={(e) => setDeadline(snapToQuarter(e.target.value))}
               />
             </label>
+          </div>
+
+          <div>
+            <span className="text-[13px] font-bold text-neutral-600">설문 시간 범위</span>
+            <div className="flex items-center gap-2 mt-1">
+              <select
+                data-testid="hour-start"
+                className={inputCls}
+                value={hourStart}
+                onChange={(e) => setHourStart(Number(e.target.value))}
+              >
+                {Array.from({ length: 24 }, (_, h) => (
+                  <option key={h} value={h}>
+                    {pad2(h)}:00
+                  </option>
+                ))}
+              </select>
+              <span className="text-sm text-neutral-400">~</span>
+              <select
+                data-testid="hour-end"
+                className={inputCls}
+                value={hourEnd}
+                onChange={(e) => setHourEnd(Number(e.target.value))}
+              >
+                {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                  <option key={h} value={h}>
+                    {pad2(h)}:00
+                  </option>
+                ))}
+              </select>
+            </div>
+            <p className="text-[11.5px] text-neutral-400 mt-1">
+              참여자는 이 범위의 시간만 입력해요. 예: 09:00~18:00
+            </p>
           </div>
 
           <div>
