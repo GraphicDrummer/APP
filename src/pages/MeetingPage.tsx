@@ -7,12 +7,15 @@ import {
   listParticipants,
   parseDateRange,
   replaceAvailability,
+  updateMeeting,
   updateParticipant,
   type MeetingRow,
   type ParticipantRow,
   type SlotState,
 } from '../lib/db'
 import { isoToSlot, mondayOf, slotToIso } from '../lib/slots'
+import { downloadIcs, googleCalendarUrl } from '../lib/calendar'
+import { downloadResultPng } from '../lib/resultImage'
 import { AvailabilityGrid } from '../components/AvailabilityGrid'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
@@ -21,6 +24,15 @@ const NEXT_STATE: Record<string, CellState | undefined> = {
   free: 'soft',
   soft: 'blocked',
   blocked: undefined, // 다시 '가능' — 키 삭제
+}
+
+const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
+
+/** 확정 시각 표시용: "2026-07-06 (월) 14:00" */
+function fmtConfirmed(iso: string): string {
+  const d = new Date(iso)
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return `${date} (${WEEKDAYS_KO[d.getDay()]}) ${String(d.getHours()).padStart(2, '0')}:00`
 }
 
 // 공유 링크(/m/:code)로 들어오는 참여자 입력 화면
@@ -34,6 +46,7 @@ export function MeetingPage() {
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [copied, setCopied] = useState(false)
 
   const monday = useMemo(
     () => (meeting ? mondayOf(parseDateRange(meeting.date_range).start) : null),
@@ -128,6 +141,50 @@ export function MeetingPage() {
     setSaveState('idle')
   }
 
+  // 시간 라벨 클릭 — 그 시간 전체 칸(모든 요일)을 한 번에 순환. cycleDay와 같은 규칙.
+  const cycleHour = (h: number) => {
+    setPeople((prev) =>
+      prev.map((p, i) => {
+        if (i !== selected) return p
+        const days = [0, 1, 2, 3, 4]
+        const states = days.map((d) => p.cells[`${d}-${h}`] ?? 'free')
+        const uniform = states.every((s) => s === states[0]) ? states[0] : null
+        const next = uniform ? NEXT_STATE[uniform] : 'soft'
+        const cells = { ...p.cells }
+        for (const d of days) {
+          if (next) cells[`${d}-${h}`] = next
+          else delete cells[`${d}-${h}`]
+        }
+        return { ...p, cells }
+      }),
+    )
+    setSaveState('idle')
+  }
+
+  // 추천 카드에서 확정 — meetings.confirmed_slot에 저장하면 완결 화면으로 전환
+  const confirmSlot = async (windowKey: string) => {
+    if (!meeting || !monday) return
+    try {
+      const [d, h] = windowKey.split('-').map(Number)
+      const updated = await updateMeeting(meeting.id, {
+        confirmed_slot: slotToIso(monday, d, h),
+      })
+      setMeeting(updated)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const unconfirm = async () => {
+    if (!meeting) return
+    try {
+      const updated = await updateMeeting(meeting.id, { confirmed_slot: null })
+      setMeeting(updated)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
   const toggleRole = (index: number) => {
     const next = rows[index].role === 'required' ? 'optional' : 'required'
     setPeople((prev) => prev.map((p, i) => (i === index ? { ...p, role: next } : p)))
@@ -175,6 +232,80 @@ export function MeetingPage() {
     )
   }
 
+  // 확정 완료 — 완결 화면
+  if (meeting?.confirmed_slot) {
+    const timeText = fmtConfirmed(meeting.confirmed_slot)
+    const ev = {
+      title: meeting.title,
+      startIso: meeting.confirmed_slot,
+      durationHours: meeting.duration_slots,
+      description: `주최: ${meeting.organizer_name} — 딱에서 확정된 시간이에요.`,
+    }
+    const copyLink = async () => {
+      await navigator.clipboard.writeText(window.location.href)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }
+    const btnCls =
+      'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm font-bold cursor-pointer text-center'
+    return (
+      <div className="min-h-screen bg-neutral-100 text-neutral-900">
+        <div className="max-w-[430px] mx-auto px-3.5 pt-14 pb-16 text-center">
+          <div
+            data-testid="confirmed-card"
+            className="bg-white rounded-2xl border border-blue-600 shadow-lg shadow-blue-600/10 p-6"
+          >
+            <div className="mx-auto w-14 h-14 rounded-full bg-green-600 text-white text-3xl leading-[56px] font-bold">
+              ✓
+            </div>
+            <p className="text-xs font-bold tracking-wide text-green-700 mt-3">확정됐어요</p>
+            <p className="text-[13px] text-neutral-500 mt-2">{meeting.title}</p>
+            <p data-testid="confirmed-time" className="text-[26px] font-extrabold leading-tight">
+              {timeText}
+            </p>
+          </div>
+
+          <div className="mt-4 space-y-2">
+            <button type="button" data-testid="download-ics" onClick={() => downloadIcs(ev)} className={btnCls}>
+              내 캘린더에 추가 (.ics 다운로드)
+            </button>
+            <a
+              data-testid="google-calendar"
+              href={googleCalendarUrl(ev)}
+              target="_blank"
+              rel="noreferrer"
+              className={`${btnCls} block`}
+            >
+              구글 캘린더에 추가
+            </a>
+            <button
+              type="button"
+              data-testid="download-png"
+              onClick={() =>
+                downloadResultPng({ title: meeting.title, organizer: meeting.organizer_name, timeText })
+              }
+              className={btnCls}
+            >
+              결과 이미지 저장 (PNG)
+            </button>
+            <button type="button" data-testid="copy-result-link" onClick={() => void copyLink()} className={btnCls}>
+              {copied ? '복사됨!' : '링크 복사'}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            data-testid="unconfirm"
+            onClick={() => void unconfirm()}
+            className="mt-5 text-[11.5px] text-neutral-400 underline cursor-pointer"
+          >
+            확정 취소하고 다시 조율하기
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const range = meeting ? parseDateRange(meeting.date_range) : null
   const submitted = rows[selected]?.submitted_at
 
@@ -197,7 +328,11 @@ export function MeetingPage() {
         </header>
 
         {result && (
-          <RecommendationCard result={result} confirmed={null} onConfirm={() => {}} />
+          <RecommendationCard
+            result={result}
+            confirmed={null}
+            onConfirm={(k) => void confirmSlot(k)}
+          />
         )}
 
         <p className="text-[13px] font-bold text-neutral-500 mt-5 mb-2 px-1">
@@ -220,6 +355,7 @@ export function MeetingPage() {
               onCycleCell={cycleCell}
               hours={hours}
               onCycleDay={cycleDay}
+              onCycleHour={cycleHour}
             />
           </div>
         )}

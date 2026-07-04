@@ -9,6 +9,8 @@ interface Props {
   hours?: readonly number[]
   /** 있으면 요일 헤더가 버튼이 되고, 누르면 그 요일 전체 칸을 한 번에 순환 */
   onCycleDay?: (d: number) => void
+  /** 있으면 시간 라벨이 버튼이 되고, 누르면 그 시간 전체 칸(모든 요일)을 한 번에 순환 */
+  onCycleHour?: (h: number) => void
 }
 
 const CELL_STYLE: Record<string, string> = {
@@ -20,7 +22,13 @@ const CELL_STYLE: Record<string, string> = {
 const CELL_LABEL: Record<string, string> = { free: '', soft: '별로', blocked: '불가' }
 
 // 요일×시간 그리드 — 칸을 누르면 가능 → 별로 → 불가 순으로 순환
-export function AvailabilityGrid({ person, onCycleCell, hours = HOURS, onCycleDay }: Props) {
+export function AvailabilityGrid({
+  person,
+  onCycleCell,
+  hours = HOURS,
+  onCycleDay,
+  onCycleHour,
+}: Props) {
   return (
     <div className="bg-white border border-neutral-200 rounded-xl p-3">
       <p className="text-sm font-bold mb-2">
@@ -54,7 +62,19 @@ export function AvailabilityGrid({ person, onCycleCell, hours = HOURS, onCycleDa
           {hours.map((h) => (
             <tr key={h}>
               <td className="text-[10.5px] text-right pr-1 whitespace-nowrap w-9 text-neutral-500">
-                {h}:00
+                {onCycleHour ? (
+                  <button
+                    type="button"
+                    data-testid={`hour-${h}`}
+                    aria-label={`${h}시 전체 순환`}
+                    onClick={() => onCycleHour(h)}
+                    className="w-full rounded-md border border-neutral-200 bg-neutral-50 py-0.5 cursor-pointer"
+                  >
+                    {h}:00
+                  </button>
+                ) : (
+                  `${h}:00`
+                )}
               </td>
               {DAYS.map((_, d) => {
                 const s: DisplayState = person.cells[key(d, h)] ?? 'free'

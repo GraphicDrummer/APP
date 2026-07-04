@@ -12,13 +12,13 @@ const inputCls =
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
-/** datetime-local 값의 분을 00/15/30/45 중 가장 가까운 값으로 스냅 */
-function snapToQuarter(value: string): string {
-  const m = value.match(/^(.+T\d{2}):(\d{2})$/)
-  if (!m) return value
-  const snapped = Math.round(Number(m[2]) / 15) * 15
-  return snapped === 60 ? `${m[1]}:45` : `${m[1]}:${pad2(snapped)}`
-}
+// 15분 단위 시간 목록: 00:00, 00:15 … 23:45
+// (datetime-local의 step은 브라우저 피커의 분 목록을 제한하지 못해서 select로 강제한다)
+const QUARTER_TIMES = Array.from({ length: 24 * 4 }, (_, i) => {
+  const h = Math.floor(i / 4)
+  const m = (i % 4) * 15
+  return `${pad2(h)}:${pad2(m)}`
+})
 
 // 주최자용 모임 생성 화면 — 저장되면 공유 링크를 보여준다
 export function CreateMeetingPage() {
@@ -29,7 +29,8 @@ export function CreateMeetingPage() {
   const [durationSlots, setDurationSlots] = useState(1)
   const [hourStart, setHourStart] = useState(9)
   const [hourEnd, setHourEnd] = useState(18)
-  const [deadline, setDeadline] = useState('')
+  const [deadlineDate, setDeadlineDate] = useState('')
+  const [deadlineTime, setDeadlineTime] = useState('18:00')
   const [people, setPeople] = useState<DraftPerson[]>([])
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -80,7 +81,9 @@ export function CreateMeetingPage() {
         durationSlots,
         hourStart,
         hourEnd,
-        deadline: deadline ? new Date(deadline).toISOString() : undefined,
+        deadline: deadlineDate
+          ? new Date(`${deadlineDate}T${deadlineTime}`).toISOString()
+          : undefined,
       })
       for (const p of people) {
         await addParticipant({ meetingId: meeting.id, name: p.name, role: p.role })
@@ -210,17 +213,32 @@ export function CreateMeetingPage() {
                 <option value={3}>3시간</option>
               </select>
             </label>
-            <label className="block flex-1">
+            <div className="block flex-1">
               <span className="text-[13px] font-bold text-neutral-600">응답 마감 (선택)</span>
-              <input
-                data-testid="deadline"
-                type="datetime-local"
-                step={900}
-                className={inputCls}
-                value={deadline}
-                onChange={(e) => setDeadline(snapToQuarter(e.target.value))}
-              />
-            </label>
+              <div className="flex gap-1.5">
+                <input
+                  data-testid="deadline-date"
+                  type="date"
+                  aria-label="마감 날짜"
+                  className={inputCls}
+                  value={deadlineDate}
+                  onChange={(e) => setDeadlineDate(e.target.value)}
+                />
+                <select
+                  data-testid="deadline-time"
+                  aria-label="마감 시각 (15분 단위)"
+                  className={inputCls}
+                  value={deadlineTime}
+                  onChange={(e) => setDeadlineTime(e.target.value)}
+                >
+                  {QUARTER_TIMES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
           <div>

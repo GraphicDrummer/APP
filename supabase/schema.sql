@@ -16,6 +16,8 @@ create table public.meetings (
   constraint meetings_hour_range check (hour_end > hour_start),
   -- 참여자 응답 마감 시각 (없으면 무기한)
   deadline       timestamptz,
+  -- 확정된 모임 시간 (null이면 아직 미확정)
+  confirmed_slot timestamptz,
   -- 공유 링크(/m/:code)용 추측 불가능한 짧은 코드 — 클라이언트가 생성
   share_code     text not null unique,
   created_at     timestamptz not null default now()
