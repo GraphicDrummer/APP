@@ -16,6 +16,8 @@ import {
 import { isoToSlot, mondayOf, slotToIso } from '../lib/slots'
 import { downloadIcs, googleCalendarUrl } from '../lib/calendar'
 import { downloadResultPng } from '../lib/resultImage'
+import { StepTabs } from '../components/StepTabs'
+import { Footer } from '../components/Footer'
 import { AvailabilityGrid } from '../components/AvailabilityGrid'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
@@ -249,8 +251,11 @@ export function MeetingPage() {
     const btnCls =
       'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm font-bold cursor-pointer text-center'
     return (
-      <div className="min-h-screen bg-neutral-100 text-neutral-900">
-        <div className="max-w-[430px] mx-auto px-3.5 pt-14 pb-16 text-center">
+      <div className="min-h-screen bg-app text-ink">
+        <div className="max-w-[430px] mx-auto">
+          <StepTabs current={2} />
+        </div>
+        <div className="max-w-[430px] mx-auto px-3.5 pt-8 pb-4 text-center">
           <div
             data-testid="confirmed-card"
             className="bg-white rounded-2xl border border-blue-600 shadow-lg shadow-blue-600/10 p-6"
@@ -301,6 +306,7 @@ export function MeetingPage() {
           >
             확정 취소하고 다시 조율하기
           </button>
+          <Footer />
         </div>
       </div>
     )
@@ -310,8 +316,11 @@ export function MeetingPage() {
   const submitted = rows[selected]?.submitted_at
 
   return (
-    <div className="min-h-screen bg-neutral-100 text-neutral-900">
-      <div className="max-w-[430px] mx-auto px-3.5 pt-5 pb-16">
+    <div className="min-h-screen bg-app text-ink">
+      <div className="max-w-[430px] mx-auto">
+        <StepTabs current={1} />
+      </div>
+      <div className="max-w-[430px] mx-auto px-3.5 pt-2 pb-4">
         <header className="mb-4 px-0.5">
           <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase">
             {meeting?.organizer_name} 님의 모임
@@ -384,6 +393,7 @@ export function MeetingPage() {
             마지막 제출: {new Date(submitted).toLocaleString('ko-KR')}
           </p>
         )}
+        <Footer />
       </div>
     </div>
   )

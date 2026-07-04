@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
+import { StepTabs } from '../components/StepTabs'
+import { Footer } from '../components/Footer'
 
 interface DraftPerson {
   name: string
@@ -106,8 +108,11 @@ export function CreateMeetingPage() {
   if (link) {
     const path = new URL(link).pathname
     return (
-      <div className="min-h-screen bg-neutral-100 text-neutral-900">
-        <div className="max-w-[430px] mx-auto px-3.5 pt-16 pb-16 text-center">
+      <div className="min-h-screen bg-app text-ink">
+        <div className="max-w-[430px] mx-auto">
+          <StepTabs current={0} />
+        </div>
+        <div className="max-w-[430px] mx-auto px-3.5 pt-10 pb-4 text-center">
           <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase">
             모임이 만들어졌어요
           </p>
@@ -135,14 +140,18 @@ export function CreateMeetingPage() {
               </Link>
             </div>
           </div>
+          <Footer />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-neutral-100 text-neutral-900">
-      <div className="max-w-[430px] mx-auto px-3.5 pt-5 pb-16">
+    <div className="min-h-screen bg-app text-ink">
+      <div className="max-w-[430px] mx-auto">
+        <StepTabs current={0} />
+      </div>
+      <div className="max-w-[430px] mx-auto px-3.5 pt-2 pb-4">
         <header className="mb-4 px-0.5">
           <h1 className="text-[22px] font-extrabold">
             딱<span className="text-blue-600">.</span> 새 모임
@@ -358,11 +367,12 @@ export function CreateMeetingPage() {
           </button>
         </div>
 
-        <footer className="mt-6 text-xs text-neutral-400 text-center">
+        <p className="mt-6 text-xs text-neutral-400 text-center">
           <Link to="/demo" className="underline">
             추천 엔진 데모 보기
           </Link>
-        </footer>
+        </p>
+        <Footer />
       </div>
     </div>
   )
