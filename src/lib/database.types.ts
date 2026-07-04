@@ -15,6 +15,8 @@ export type MeetingRow = {
   duration_slots: number
   /** ISO 8601, null이면 마감 없음 */
   deadline: string | null
+  /** 공유 링크(/m/:code)용 짧은 코드 */
+  share_code: string
   created_at: string
 }
 

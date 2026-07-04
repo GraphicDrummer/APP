@@ -41,6 +41,17 @@ export function parseDateRange(range: string): { start: string; end: string } {
   }
 }
 
+// ---------- share code ----------
+
+// 0/O, 1/l/I 같은 헷갈리는 글자 제외한 base58
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
+
+/** 공유 링크용 추측 불가능한 코드 (기본 8자 ≈ 58^8 조합) */
+export function generateShareCode(length = 8): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(length))
+  return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('')
+}
+
 // ---------- meetings ----------
 
 export interface CreateMeetingInput {
@@ -65,6 +76,7 @@ export async function createMeeting(input: CreateMeetingInput): Promise<MeetingR
         date_range: toDateRange(input.dateStart, input.dateEnd),
         duration_slots: input.durationSlots ?? 1,
         deadline: input.deadline ?? null,
+        share_code: generateShareCode(),
       })
       .select()
       .single(),
@@ -73,6 +85,17 @@ export async function createMeeting(input: CreateMeetingInput): Promise<MeetingR
 
 export async function getMeeting(id: string): Promise<MeetingRow | null> {
   const { data, error } = await supabase.from('meetings').select().eq('id', id).maybeSingle()
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** 공유 링크의 코드로 모임 조회 */
+export async function getMeetingByCode(code: string): Promise<MeetingRow | null> {
+  const { data, error } = await supabase
+    .from('meetings')
+    .select()
+    .eq('share_code', code)
+    .maybeSingle()
   if (error) throw new Error(error.message)
   return data
 }

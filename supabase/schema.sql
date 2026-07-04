@@ -12,8 +12,12 @@ create table public.meetings (
   duration_slots integer not null default 1 check (duration_slots >= 1),
   -- 참여자 응답 마감 시각 (없으면 무기한)
   deadline       timestamptz,
+  -- 공유 링크(/m/:code)용 추측 불가능한 짧은 코드 — 클라이언트가 생성
+  share_code     text not null unique,
   created_at     timestamptz not null default now()
 );
+
+create index meetings_share_code_idx on public.meetings (share_code);
 
 -- 참여자
 create table public.participants (
