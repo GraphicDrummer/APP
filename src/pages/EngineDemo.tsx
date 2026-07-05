@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { key, recommend, type CellState, type Person } from '../engine'
+import { DAYS, HOURS, key, recommend, type CellState, type Person } from '../engine'
 import { presetBase, presetVariant } from '../presets'
 import { mondayOf, slotToIso } from '../lib/slots'
 import { AvailabilityGrid } from '../components/AvailabilityGrid'
@@ -19,6 +19,8 @@ export function EngineDemo() {
   const [selected, setSelected] = useState(0)
   const [scenario, setScenario] = useState<0 | 1>(0)
   const [confirmed, setConfirmed] = useState<string | null>(null)
+  // 요일 일괄 변경 시 해당 열을 위→아래 순차 전환시키기 위한 마커
+  const [cascadeDay, setCascadeDay] = useState<number | null>(null)
 
   const result = useMemo(() => recommend(people), [people])
 
@@ -38,6 +40,48 @@ export function EngineDemo() {
         const next = NEXT_STATE[cells[k] ?? 'blocked']
         if (next) cells[k] = next
         else delete cells[k]
+        return { ...p, cells }
+      }),
+    )
+    setConfirmed(null)
+  }
+
+  // 요일 헤더 클릭 — 그 요일 전체 칸을 한 번에 순환. MeetingPage.tsx와 동일한 규칙.
+  const cycleDay = (d: number) => {
+    setCascadeDay(d)
+    window.setTimeout(() => setCascadeDay(null), HOURS.length * 20 + 250)
+    setPeople((prev) =>
+      prev.map((p, i) => {
+        if (i !== selected) return p
+        const states = HOURS.map((h) => p.cells[key(d, h)] ?? 'blocked')
+        const uniform = states.every((s) => s === states[0]) ? states[0] : null
+        const next = uniform ? NEXT_STATE[uniform] : 'soft'
+        const cells = { ...p.cells }
+        for (const h of HOURS) {
+          if (next) cells[key(d, h)] = next
+          else delete cells[key(d, h)]
+        }
+        return { ...p, cells }
+      }),
+    )
+    setConfirmed(null)
+  }
+
+  // 시간 헤더 클릭 — 그 시간 전체 칸(모든 요일)을 한 번에 순환. cycleDay와 같은 규칙.
+  const cycleHour = (h: number) => {
+    setCascadeDay(null)
+    setPeople((prev) =>
+      prev.map((p, i) => {
+        if (i !== selected) return p
+        const days = DAYS.map((_, d) => d)
+        const states = days.map((d) => p.cells[key(d, h)] ?? 'blocked')
+        const uniform = states.every((s) => s === states[0]) ? states[0] : null
+        const next = uniform ? NEXT_STATE[uniform] : 'soft'
+        const cells = { ...p.cells }
+        for (const d of days) {
+          if (next) cells[key(d, h)] = next
+          else delete cells[key(d, h)]
+        }
         return { ...p, cells }
       }),
     )
@@ -105,7 +149,13 @@ export function EngineDemo() {
         />
 
         <div className="mt-2.5">
-          <AvailabilityGrid person={people[selected]} onCycleCell={cycleCell} />
+          <AvailabilityGrid
+            person={people[selected]}
+            onCycleCell={cycleCell}
+            onCycleDay={cycleDay}
+            onCycleHour={cycleHour}
+            cascadeDay={cascadeDay}
+          />
         </div>
 
         <footer className="mt-6 text-xs text-neutral-400 text-center">

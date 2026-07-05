@@ -23,7 +23,7 @@ import { Footer } from '../components/Footer'
 import { motion } from 'motion/react'
 import { press, pressSpring, riseIn, spring } from '../lib/motion'
 import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '../components/ui'
-import { AvailabilityGrid, GridLegend } from '../components/AvailabilityGrid'
+import { AvailabilityGrid } from '../components/AvailabilityGrid'
 import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
@@ -548,22 +548,17 @@ export function MeetingPage() {
       </div>
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
         <Enter>
-          <header className="mb-4 px-0.5 flex items-end justify-between gap-3">
-            <div>
-              <h1 data-testid="meeting-title" className="text-[22.5px] font-black tracking-[-1.1px]">
-                {meeting?.title}
-              </h1>
-              <p className="text-[11.5px] text-ink-muted mt-1">
-                {range?.start} ~ {range?.end} ·{' '}
-                {meeting ? `${hhmm(meeting.hour_start)}~${hhmm(meeting.hour_end)}` : ''} ·{' '}
-                {meeting?.duration_slots}시간
-                {meeting?.deadline &&
-                  ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
-              </p>
-            </div>
-            <div className="flex-none pb-0.5">
-              <GridLegend />
-            </div>
+          <header className="mb-4 px-0.5">
+            <h1 data-testid="meeting-title" className="text-[22.5px] font-black tracking-[-1.1px]">
+              {meeting?.title}
+            </h1>
+            <p className="text-[11.5px] text-ink-muted mt-1">
+              {range?.start} ~ {range?.end} ·{' '}
+              {meeting ? `${hhmm(meeting.hour_start)}~${hhmm(meeting.hour_end)}` : ''} ·{' '}
+              {meeting?.duration_slots}시간
+              {meeting?.deadline &&
+                ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
+            </p>
           </header>
 
           {isAdmin && (

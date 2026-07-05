@@ -53,12 +53,15 @@ export function AvailabilityGrid({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3 px-0.5">
-        <h3 className="text-[15px] font-black tracking-[-0.4px]">
-          <span className="text-primary">{person.id}</span>님의 시간
-        </h3>
+      <div className="mb-3 px-0.5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[15px] font-black tracking-[-0.4px]">
+            <span className="text-primary">{person.id}</span>님의 시간
+          </h3>
+          <GridLegend />
+        </div>
         {(onCycleDay || onCycleHour) && (
-          <p className="text-[10px] font-bold text-ink-muted/40">헤더 탭 → 행/열 일괄</p>
+          <p className="text-[10px] font-bold text-ink-muted/40 mt-1">헤더 탭 → 행/열 일괄</p>
         )}
       </div>
 
@@ -92,7 +95,10 @@ export function AvailabilityGrid({
           </tr>
         </thead>
         <tbody>
-          {hours.map((h, row) => (
+          {hours.map((h, row) => {
+            const rowState = uniformState(DAYS.map((_, d) => cellState(d, h)))
+            const hourStyle = HEADER_STYLE[rowState ?? 'blocked']
+            return (
             <tr key={h}>
               <td>
                 {onCycleHour ? (
@@ -103,7 +109,7 @@ export function AvailabilityGrid({
                     onClick={() => onCycleHour(h)}
                     whileTap={press}
                     transition={pressSpring}
-                    className="w-full text-[10px] font-black text-ink-muted cursor-pointer"
+                    className={`w-full h-[30px] rounded-[13px] text-[10px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${hourStyle}`}
                   >
                     {hhmm(h)}
                   </motion.button>
@@ -134,14 +140,15 @@ export function AvailabilityGrid({
                 )
               })}
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
     </div>
   )
 }
 
-/** 우측 상단 색 범례 — 가능/애매/불가 */
+/** 색 범례 — 가능/애매/불가. 그리드 상단(참여자 이름 옆)에 붙여 쓴다 */
 export function GridLegend() {
   const items: { label: string; cls: string }[] = [
     { label: '가능', cls: 'bg-primary border border-primary' },
