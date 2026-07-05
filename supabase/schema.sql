@@ -18,12 +18,17 @@ create table public.meetings (
   deadline       timestamptz,
   -- 확정된 모임 시간 (null이면 아직 미확정)
   confirmed_slot timestamptz,
-  -- 공유 링크(/m/:code)용 추측 불가능한 짧은 코드 — 클라이언트가 생성
+  -- 공유 링크(/m/:code)용 추측 불가능한 짧은 코드 — 참여자용, 관리 권한 없음
   share_code     text not null unique,
+  -- 관리자 링크(/m/:code?adminKey=...)용 비밀값 — 정보 수정·확정 권한.
+  -- anon은 이 컬럼을 테이블에서 직접 select 할 수 없다 (아래 권한 설정 참고) —
+  -- 검증·수정은 전부 verify_admin_key / admin_* 함수를 통해서만 이뤄진다.
+  admin_key      text not null unique,
   created_at     timestamptz not null default now()
 );
 
 create index meetings_share_code_idx on public.meetings (share_code);
+create index meetings_admin_key_idx on public.meetings (admin_key);
 
 -- 참여자
 create table public.participants (
@@ -50,8 +55,9 @@ create table public.availability (
 
 create index availability_participant_idx on public.availability (participant_id);
 
--- RLS: 아직 인증 없이 링크 기반으로 쓰므로 anon 키에 전체 권한을 연다.
--- 나중에 링크 공유(참여 토큰)를 붙일 때 정책을 좁힌다.
+-- RLS: 아직 인증 없이 링크 기반으로 쓰므로 anon 키에 기본적으로 넓게 권한을 연다.
+-- participants/availability는 나중에 링크 공유(참여 토큰)를 붙일 때 정책을 좁힌다.
+-- meetings는 admin_key(관리 권한을 쥔 비밀값)가 있어서 아래에서 별도로 더 좁힌다.
 alter table public.meetings     enable row level security;
 alter table public.participants enable row level security;
 alter table public.availability enable row level security;
@@ -59,3 +65,83 @@ alter table public.availability enable row level security;
 create policy "anon all - meetings"     on public.meetings     for all to anon using (true) with check (true);
 create policy "anon all - participants" on public.participants for all to anon using (true) with check (true);
 create policy "anon all - availability" on public.availability for all to anon using (true) with check (true);
+
+-- meetings 컬럼/쓰기 권한 강화 — admin_key는 anon이 select로 절대 읽을 수 없고,
+-- update도 anon이 직접 할 수 없다. 검증·관리자 수정은 SECURITY DEFINER 함수로만 한다.
+-- (라이브 프로젝트에 이미 적용했다면 supabase/migrations/0006_harden_meetings_access.sql 참고 —
+-- 이 파일은 새 프로젝트를 처음부터 셋업할 때를 위한 최종 상태다.)
+revoke select on public.meetings from anon;
+grant select (
+  id, title, organizer_name, date_range, duration_slots,
+  hour_start, hour_end, deadline, confirmed_slot, share_code, created_at
+) on public.meetings to anon;
+
+revoke update on public.meetings from anon;
+
+create or replace function public.verify_admin_key(p_share_code text, p_admin_key text)
+returns setof public.meetings
+language sql
+security definer
+set search_path = public
+as $$
+  select * from public.meetings
+  where share_code = p_share_code and admin_key::text = p_admin_key;
+$$;
+
+revoke all on function public.verify_admin_key(text, text) from public;
+grant execute on function public.verify_admin_key(text, text) to anon;
+
+create or replace function public.admin_update_meeting_info(
+  p_share_code text,
+  p_admin_key text,
+  p_title text,
+  p_organizer_name text,
+  p_date_start date,
+  p_date_end date,
+  p_hour_start integer,
+  p_hour_end integer,
+  p_duration_slots integer,
+  p_deadline timestamptz
+)
+returns setof public.meetings
+language sql
+security definer
+set search_path = public
+as $$
+  update public.meetings
+  set title          = p_title,
+      organizer_name = p_organizer_name,
+      date_range     = daterange(p_date_start, p_date_end, '[]'),
+      hour_start     = p_hour_start,
+      hour_end       = p_hour_end,
+      duration_slots = p_duration_slots,
+      deadline       = p_deadline
+  where share_code = p_share_code and admin_key::text = p_admin_key
+  returning *;
+$$;
+
+revoke all on function public.admin_update_meeting_info(
+  text, text, text, text, date, date, integer, integer, integer, timestamptz
+) from public;
+grant execute on function public.admin_update_meeting_info(
+  text, text, text, text, date, date, integer, integer, integer, timestamptz
+) to anon;
+
+create or replace function public.admin_set_confirmed_slot(
+  p_share_code text,
+  p_admin_key text,
+  p_confirmed_slot timestamptz
+)
+returns setof public.meetings
+language sql
+security definer
+set search_path = public
+as $$
+  update public.meetings
+  set confirmed_slot = p_confirmed_slot
+  where share_code = p_share_code and admin_key::text = p_admin_key
+  returning *;
+$$;
+
+revoke all on function public.admin_set_confirmed_slot(text, text, timestamptz) from public;
+grant execute on function public.admin_set_confirmed_slot(text, text, timestamptz) to anon;

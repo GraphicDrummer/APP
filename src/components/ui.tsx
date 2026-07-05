@@ -84,6 +84,24 @@ export function Field({ label, children }: { label: string; children: ReactNode 
   )
 }
 
+/** ChipRow와 같은 "짧은 라벨 + 입력" 한 줄 — 날짜 범위(시작/종료) 등에 사용 */
+export function LabeledRow({
+  label,
+  children,
+  className = '',
+}: {
+  label: string
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div className={`flex items-center gap-1.5 min-w-0 ${className}`}>
+      <span className="flex-none text-[11px] font-black text-ink-muted/60">{label}</span>
+      {children}
+    </div>
+  )
+}
+
 // ---------- 칩/배지 ----------
 
 /** 참여자 역할 배지 — solid: 칩용(필참 파랑 채움), tint: 리스트용(파랑 10% 배경) */

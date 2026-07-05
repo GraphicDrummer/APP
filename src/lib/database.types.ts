@@ -21,8 +21,15 @@ export type MeetingRow = {
   deadline: string | null
   /** 확정된 모임 시간 (ISO 8601). null이면 아직 미확정 */
   confirmed_slot: string | null
-  /** 공유 링크(/m/:code)용 짧은 코드 */
+  /** 공유 링크(/m/:code)용 짧은 코드 — 참여자용, 관리 권한 없음 */
   share_code: string
+  /**
+   * 관리자 링크(/m/:code?adminKey=...)용 비밀값 — 정보 수정·확정 권한.
+   * anon은 이 컬럼을 테이블에서 직접 select 할 수 없다(DB 권한으로 강제됨).
+   * verify_admin_key() 검증에 성공했을 때, 또는 생성 직후(클라이언트가 값을 이미
+   * 알고 있을 때)만 이 필드가 채워진 MeetingRow가 만들어진다 — 그 외엔 undefined.
+   */
+  admin_key?: string
   created_at: string
 }
 
@@ -65,7 +72,34 @@ export type Database = {
       }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      // admin_key 검증 — 맞으면 admin_key까지 채워진 모임 1건, 아니면 빈 배열
+      verify_admin_key: {
+        Args: { p_share_code: string; p_admin_key: string }
+        Returns: MeetingRow[]
+      }
+      // 관리자 전용 정보 수정 — admin_key가 맞는 행만 갱신된다
+      admin_update_meeting_info: {
+        Args: {
+          p_share_code: string
+          p_admin_key: string
+          p_title: string
+          p_organizer_name: string
+          p_date_start: string
+          p_date_end: string
+          p_hour_start: number
+          p_hour_end: number
+          p_duration_slots: number
+          p_deadline: string | null
+        }
+        Returns: MeetingRow[]
+      }
+      // 관리자 전용 확정/확정취소 — p_confirmed_slot이 null이면 확정취소
+      admin_set_confirmed_slot: {
+        Args: { p_share_code: string; p_admin_key: string; p_confirmed_slot: string | null }
+        Returns: MeetingRow[]
+      }
+    }
     Enums: Record<string, never>
     CompositeTypes: Record<string, never>
   }

@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { recommend, type CellState, type Person } from '../engine'
 import {
+  adminSetConfirmedSlot,
+  adminUpdateMeetingInfo,
   getMeetingByCode,
   listMeetingAvailability,
   listParticipants,
   parseDateRange,
   replaceAvailability,
-  updateMeeting,
   updateParticipant,
+  verifyAdminKey,
   type MeetingRow,
   type ParticipantRow,
   type SlotState,
@@ -19,21 +21,23 @@ import { downloadResultPng } from '../lib/resultImage'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { motion } from 'motion/react'
-import { press, pressSpring, spring } from '../lib/motion'
-import { Button, Enter } from '../components/ui'
+import { press, pressSpring, riseIn, spring } from '../lib/motion'
+import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '../components/ui'
 import { AvailabilityGrid, GridLegend } from '../components/AvailabilityGrid'
+import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
 
 const NEXT_STATE: Record<string, CellState | undefined> = {
   free: 'soft',
   soft: 'blocked',
-  blocked: undefined, // 다시 '가능' — 키 삭제
+  blocked: undefined,
 }
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
+const pad2 = (n: number) => String(n).padStart(2, '0')
+const DEADLINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
 
-/** 확정 시각 표시용: "2026-07-06 (월) 14:00" — 앱 전체 콜론 24시간제(hhmm)와 통일 */
 function fmtConfirmed(iso: string): string {
   const d = new Date(iso)
   const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -106,9 +110,11 @@ function OtherCalendarIcon() {
   )
 }
 
-// 공유 링크(/m/:code)로 들어오는 참여자 입력 화면
 export function MeetingPage() {
   const { code } = useParams<{ code: string }>()
+  const [searchParams] = useSearchParams()
+  const adminKeyFromUrl = searchParams.get('adminKey')
+
   const [meeting, setMeeting] = useState<MeetingRow | null>(null)
   const [rows, setRows] = useState<ParticipantRow[]>([])
   const [people, setPeople] = useState<Person[]>([])
@@ -118,17 +124,33 @@ export function MeetingPage() {
   const [error, setError] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [copied, setCopied] = useState(false)
-  // 요일 일괄 변경 시 해당 열을 위→아래 순차 전환시키기 위한 마커
   const [cascadeDay, setCascadeDay] = useState<number | null>(null)
-  // 조율↔확정 화면 전환. null이면 확정 여부에 따라 자동 결정
   const [view, setView] = useState<'adjust' | 'done' | null>(null)
+
+  // admin_key는 anon이 테이블에서 직접 읽을 수 없으므로, "이 meeting 객체에
+  // admin_key가 채워져 있다" = "verifyAdminKey 검증을 이미 통과했다"와 같은 뜻이다.
+  // 문자열 비교가 아니라 서버 검증 결과 자체를 신뢰 근거로 삼는다.
+  const isAdmin = !!meeting?.admin_key
+
+  const [isEditing, setIsEditing] = useState(false)
+  const [editTitle, setEditTitle] = useState('')
+  const [editOrganizer, setEditOrganizer] = useState('')
+  const [editDateStart, setEditDateStart] = useState('')
+  const [editDateEnd, setEditDateEnd] = useState('')
+  const [editHourStart, setEditHourStart] = useState(9)
+  const [editHourEnd, setEditHourEnd] = useState(18)
+  const [editDuration, setEditDuration] = useState(1)
+  const [editDeadlineOpen, setEditDeadlineOpen] = useState(false)
+  const [editDeadlineDate, setEditDeadlineDate] = useState('')
+  const [editDeadlineHour, setEditDeadlineHour] = useState(18)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const monday = useMemo(
     () => (meeting ? mondayOf(parseDateRange(meeting.date_range).start) : null),
     [meeting],
   )
 
-  // 주최자가 지정한 설문 시간 범위 (hour_end는 배타적)
   const hours = useMemo(
     () =>
       meeting
@@ -141,7 +163,16 @@ export function MeetingPage() {
     setLoading(true)
     setError(null)
     try {
-      const m = await getMeetingByCode(code ?? '')
+      // adminKey가 URL에 있으면 먼저 서버 검증을 시도하고, 실패하거나 없으면
+      // 일반 참여자 조회로 폴백한다 (틀린/오래된 adminKey라고 "존재하지 않음"으로
+      // 보여주지 않기 위함 — 참여자 화면은 그대로 뜬다).
+      let m: MeetingRow | null = null
+      if (adminKeyFromUrl) {
+        m = await verifyAdminKey(code ?? '', adminKeyFromUrl)
+      }
+      if (!m) {
+        m = await getMeetingByCode(code ?? '')
+      }
       if (!m) {
         setNotFound(true)
         return
@@ -152,11 +183,11 @@ export function MeetingPage() {
 
       const cellsById = new Map<string, Partial<Record<string, CellState>>>()
       for (const a of avail) {
-        if (a.state === 'free') continue // 저장 안 된 칸 = 가능(free)과 동일
+        if (a.state === 'free') continue
         const slot = isoToSlot(base, a.slot_datetime)
         if (!slot) continue
         const cells = cellsById.get(a.participant_id) ?? {}
-        cells[`${slot.d}-${slot.h}`] = a.state
+        cells[`${slot.d}-${slot.h}`] = a.state as CellState
         cellsById.set(a.participant_id, cells)
       }
 
@@ -170,7 +201,7 @@ export function MeetingPage() {
     } finally {
       setLoading(false)
     }
-  }, [code])
+  }, [code, adminKeyFromUrl])
 
   useEffect(() => {
     void load()
@@ -197,11 +228,8 @@ export function MeetingPage() {
     setSaveState('idle')
   }
 
-  // 요일 헤더 클릭 — 그 요일 전체 칸을 한 번에 순환.
-  // 열이 한 가지 상태로 통일돼 있으면 다음 상태로, 섞여 있으면 '별로'로 모은다.
   const cycleDay = (d: number) => {
     setCascadeDay(d)
-    // 캐스케이드가 끝나면 마커 해제 — 이후 개별 클릭은 딜레이 없이 전환
     window.setTimeout(() => setCascadeDay(null), hours.length * 20 + 250)
     setPeople((prev) =>
       prev.map((p, i) => {
@@ -220,7 +248,6 @@ export function MeetingPage() {
     setSaveState('idle')
   }
 
-  // 시간 라벨 클릭 — 그 시간 전체 칸(모든 요일)을 한 번에 순환. cycleDay와 같은 규칙.
   const cycleHour = (h: number) => {
     setCascadeDay(null)
     setPeople((prev) =>
@@ -241,14 +268,15 @@ export function MeetingPage() {
     setSaveState('idle')
   }
 
-  // 추천 카드에서 확정 — meetings.confirmed_slot에 저장. 조율 화면에 남아 초록 카드로 전환된다.
   const confirmSlot = async (windowKey: string) => {
-    if (!meeting || !monday) return
+    if (!meeting || !monday || !meeting.admin_key) return
     try {
       const [d, h] = windowKey.split('-').map(Number)
-      const updated = await updateMeeting(meeting.id, {
-        confirmed_slot: slotToIso(monday, d, h),
-      })
+      const updated = await adminSetConfirmedSlot(
+        meeting.share_code,
+        meeting.admin_key,
+        slotToIso(monday, d, h),
+      )
       setMeeting(updated)
       setView('adjust')
     } catch (e) {
@@ -257,13 +285,76 @@ export function MeetingPage() {
   }
 
   const unconfirm = async () => {
-    if (!meeting) return
+    if (!meeting || !meeting.admin_key) return
     try {
-      const updated = await updateMeeting(meeting.id, { confirmed_slot: null })
+      const updated = await adminSetConfirmedSlot(meeting.share_code, meeting.admin_key, null)
       setMeeting(updated)
       setView('adjust')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const startEditing = () => {
+    if (!meeting) return
+    const r = parseDateRange(meeting.date_range)
+    setEditTitle(meeting.title)
+    setEditOrganizer(meeting.organizer_name)
+    setEditDateStart(r.start)
+    setEditDateEnd(r.end)
+    setEditHourStart(meeting.hour_start)
+    setEditHourEnd(meeting.hour_end)
+    setEditDuration(meeting.duration_slots)
+    if (meeting.deadline) {
+      const d = new Date(meeting.deadline)
+      setEditDeadlineOpen(true)
+      setEditDeadlineDate(`${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`)
+      setEditDeadlineHour(d.getHours())
+    } else {
+      setEditDeadlineOpen(false)
+      setEditDeadlineDate('')
+      setEditDeadlineHour(18)
+    }
+    setEditError(null)
+    setIsEditing(true)
+  }
+
+  const saveEdit = async () => {
+    if (!meeting || !meeting.admin_key) return
+    if (!editTitle.trim() || !editOrganizer.trim() || !editDateStart || !editDateEnd) {
+      setEditError('제목, 주최자, 날짜 범위를 채워주세요.')
+      return
+    }
+    if (editDateEnd < editDateStart) {
+      setEditError('종료일이 시작일보다 빠를 수 없어요.')
+      return
+    }
+    if (editHourEnd <= editHourStart) {
+      setEditError('시간 범위의 끝이 시작보다 늦어야 해요.')
+      return
+    }
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const updated = await adminUpdateMeetingInfo(meeting.share_code, meeting.admin_key, {
+        title: editTitle.trim(),
+        organizerName: editOrganizer.trim(),
+        dateStart: editDateStart,
+        dateEnd: editDateEnd,
+        hourStart: editHourStart,
+        hourEnd: editHourEnd,
+        durationSlots: editDuration,
+        deadline:
+          editDeadlineOpen && editDeadlineDate
+            ? new Date(`${editDeadlineDate}T${pad2(editDeadlineHour)}:00:00`).toISOString()
+            : null,
+      })
+      setMeeting(updated)
+      setIsEditing(false)
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -283,7 +374,6 @@ export function MeetingPage() {
     try {
       const row = rows[selected]
       const person = people[selected]
-      // 표시된 칸(soft/blocked)만 저장 — 없는 칸은 '가능'
       const slots = Object.entries(person.cells).flatMap(([k, state]) => {
         if (!state) return []
         const [d, h] = k.split('-').map(Number)
@@ -309,12 +399,11 @@ export function MeetingPage() {
     return (
       <div className="p-8 text-center">
         <p className="text-lg font-extrabold">모임을 찾을 수 없어요</p>
-        <p className="text-sm text-neutral-500 mt-1">링크가 정확한지 확인해주세요.</p>
+        <p className="text-sm text-neutral-500 mt-1">リンク가 정확한지 확인해주세요.</p>
       </div>
     )
   }
 
-  // 확정 완료 — 완결 화면 (확정 탭). 조율 탭에서 다시 볼 수 있다.
   const effectiveView = view ?? (meeting?.confirmed_slot ? 'done' : 'adjust')
   if (effectiveView === 'done' && meeting?.confirmed_slot) {
     const timeText = fmtConfirmed(meeting.confirmed_slot)
@@ -423,17 +512,19 @@ export function MeetingPage() {
             </motion.button>
           </Enter>
 
-          <motion.button
-            type="button"
-            data-testid="unconfirm"
-            onClick={() => void unconfirm()}
-            whileTap={press}
-            transition={pressSpring}
-            className="mt-6 mx-auto flex items-center gap-1.5 text-[13px] font-black text-ink-muted/50 cursor-pointer"
-          >
-            <RestartIcon />
-            조율 다시 시작하기
-          </motion.button>
+          {isAdmin && (
+            <motion.button
+              type="button"
+              data-testid="unconfirm"
+              onClick={() => void unconfirm()}
+              whileTap={press}
+              transition={pressSpring}
+              className="mt-6 mx-auto flex items-center gap-1.5 text-[13px] font-black text-ink-muted/50 cursor-pointer"
+            >
+              <RestartIcon />
+              조율 다시 시작하기
+            </motion.button>
+          )}
           <Footer />
         </div>
       </div>
@@ -453,7 +544,6 @@ export function MeetingPage() {
         />
       </div>
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
-        {/* 헤드라인 먼저 → 본문 순 진입 */}
         <Enter>
           <header className="mb-4 px-0.5 flex items-end justify-between gap-3">
             <div>
@@ -468,11 +558,157 @@ export function MeetingPage() {
                   ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
               </p>
             </div>
-            {/* 우측 상단 색 범례 */}
             <div className="flex-none pb-0.5">
               <GridLegend />
             </div>
           </header>
+
+          {isAdmin && (
+            <div className="mb-5 px-0.5">
+              {!isEditing ? (
+                <motion.button
+                  type="button"
+                  data-testid="edit-meeting"
+                  onClick={startEditing}
+                  whileTap={press}
+                  transition={pressSpring}
+                  className="text-[12px] font-bold text-primary cursor-pointer"
+                >
+                  정보 수정
+                </motion.button>
+              ) : (
+                <motion.div
+                  initial={riseIn.initial}
+                  animate={riseIn.animate}
+                  transition={spring}
+                  className={`${cardCls} p-4 space-y-3`}
+                >
+                  <Field label="모임 제목">
+                    <TextInput
+                      data-testid="edit-title"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="주최자">
+                    <TextInput
+                      data-testid="edit-organizer"
+                      value={editOrganizer}
+                      onChange={(e) => setEditOrganizer(e.target.value)}
+                    />
+                  </Field>
+                  <div className="flex gap-3">
+                    <LabeledRow label="시작" className="flex-1">
+                      <TextInput
+                        data-testid="edit-date-start"
+                        type="date"
+                        className="flex-1 min-w-0"
+                        value={editDateStart}
+                        onChange={(e) => setEditDateStart(e.target.value)}
+                      />
+                    </LabeledRow>
+                    <LabeledRow label="종료" className="flex-1">
+                      <TextInput
+                        data-testid="edit-date-end"
+                        type="date"
+                        className="flex-1 min-w-0"
+                        value={editDateEnd}
+                        onChange={(e) => setEditDateEnd(e.target.value)}
+                      />
+                    </LabeledRow>
+                  </div>
+                  <div>
+                    <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
+                      시간 범위
+                    </span>
+                    <HourRangePicker
+                      start={editHourStart}
+                      end={editHourEnd}
+                      onChange={(s, e) => {
+                        setEditHourStart(s)
+                        setEditHourEnd(e)
+                      }}
+                    />
+                  </div>
+                  <Field label="소요 시간">
+                    <Select
+                      data-testid="edit-duration"
+                      value={editDuration}
+                      onChange={(e) => setEditDuration(Number(e.target.value))}
+                    >
+                      <option value={1}>1시간</option>
+                      <option value={2}>2시간</option>
+                      <option value={3}>3시간</option>
+                    </Select>
+                  </Field>
+
+                  {!editDeadlineOpen ? (
+                    <motion.button
+                      type="button"
+                      data-testid="edit-add-deadline"
+                      onClick={() => setEditDeadlineOpen(true)}
+                      whileTap={press}
+                      transition={pressSpring}
+                      className="text-[13px] font-bold text-primary cursor-pointer"
+                    >
+                      + 응답 마감 추가하기
+                    </motion.button>
+                  ) : (
+                    <div className="space-y-3">
+                      <Field label="응답 마감 날짜">
+                        <TextInput
+                          data-testid="edit-deadline-date"
+                          type="date"
+                          value={editDeadlineDate}
+                          onChange={(e) => setEditDeadlineDate(e.target.value)}
+                        />
+                      </Field>
+                      {editDeadlineDate && (
+                        <div>
+                          <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
+                            마감 시각
+                          </span>
+                          <ChipRow
+                            testId="edit-deadline-hour"
+                            options={DEADLINE_HOURS}
+                            value={editDeadlineHour}
+                            onChange={setEditDeadlineHour}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-[11px] font-bold text-ink-muted/50">
+                    날짜나 시간 범위를 바꾸면 이미 제출된 참여자 시간표가 어긋날 수 있어요.
+                  </p>
+                  {editError && (
+                    <p data-testid="edit-error" className="text-[13px] font-bold text-danger">
+                      {editError}
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      variant="ghost"
+                      onClick={() => setIsEditing(false)}
+                      className="flex-1 !py-2.5 !text-[13px]"
+                    >
+                      취소
+                    </Button>
+                    <Button
+                      data-testid="save-edit"
+                      onClick={() => void saveEdit()}
+                      disabled={editSaving}
+                      className="flex-1 !py-2.5 !text-[13px]"
+                    >
+                      {editSaving ? '저장 중…' : '저장하기'}
+                    </Button>
+                  </div>
+                </motion.div>
+              )}
+            </div>
+          )}
         </Enter>
 
         <Enter delay={0.08}>
@@ -482,6 +718,7 @@ export function MeetingPage() {
               confirmedSlot={meeting?.confirmed_slot}
               onConfirm={(k) => void confirmSlot(k)}
               onUnconfirm={() => void unconfirm()}
+              canManage={isAdmin}
             />
           )}
 
@@ -518,7 +755,6 @@ export function MeetingPage() {
           )}
         </Enter>
 
-        {/* 주요 CTA — 화면 하단 고정 */}
         <div className="sticky bottom-0 -mx-[22px] px-[22px] pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
           <Button
             data-testid="save-availability"

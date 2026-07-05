@@ -5,7 +5,7 @@ import { addParticipant, createMeeting, type Role } from '../lib/db'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
-import { Button, Enter, Field, RoleBadge, Select, TextInput, cardCls } from '../components/ui'
+import { Button, Enter, Field, LabeledRow, RoleBadge, Select, TextInput, cardCls } from '../components/ui'
 import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { hhmm } from '../lib/slots'
 
@@ -16,17 +16,14 @@ interface DraftPerson {
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
-// 마감 시각은 시간 범위와 동일한 가로 스크롤 칩 — 정시(00~23)만 선택
 const DEADLINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
 
-/** 섹션 라벨 — 12px Black, 대문자 자간 (디자인 카드 헤더용) */
 function CardLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[12px] font-black tracking-[0.6px] uppercase text-ink-muted">{children}</p>
   )
 }
 
-/** 폼 섹션 소제목 — 라벨 + 남는 폭을 채우는 얇은 구분선 */
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2.5">
@@ -38,25 +35,6 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   )
 }
 
-/** ChipRow와 같은 "짧은 라벨 + 입력" 행 스타일 — 후보 날짜 범위(시작/종료)에 사용 */
-function LabeledRow({
-  label,
-  children,
-  className = '',
-}: {
-  label: string
-  children: React.ReactNode
-  className?: string
-}) {
-  return (
-    <div className={`flex items-center gap-1.5 min-w-0 ${className}`}>
-      <span className="flex-none text-[11px] font-black text-ink-muted/60">{label}</span>
-      {children}
-    </div>
-  )
-}
-
-// 주최자용 모임 생성 화면 — 저장되면 공유 링크 화면(정보 단계 완료)을 보여준다
 export function CreateMeetingPage() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
@@ -73,8 +51,11 @@ export function CreateMeetingPage() {
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
   const [link, setLink] = useState<string | null>(null)
+  const [adminLink, setAdminLink] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [adminCopied, setAdminCopied] = useState(false)
 
   const addPerson = () => {
     const name = newName.trim()
@@ -119,14 +100,17 @@ export function CreateMeetingPage() {
         durationSlots,
         hourStart,
         hourEnd,
-        deadline: deadlineDate
+        deadline: deadlineOpen && deadlineDate
           ? new Date(`${deadlineDate}T${pad2(deadlineHour)}:00:00`).toISOString()
           : undefined,
       })
       for (const p of people) {
         await addParticipant({ meetingId: meeting.id, name: p.name, role: p.role })
       }
-      setLink(`${window.location.origin}/m/${meeting.share_code}`)
+
+      const baseUrl = window.location.origin
+      setLink(`${baseUrl}/m/${meeting.share_code}`)
+      setAdminLink(`${baseUrl}/m/${meeting.share_code}?adminKey=${meeting.admin_key}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -141,17 +125,24 @@ export function CreateMeetingPage() {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  // ---------- 생성 완료 화면 (정보 단계 완료) ----------
+  const copyAdminLink = async () => {
+    if (!adminLink) return
+    await navigator.clipboard.writeText(adminLink)
+    setAdminCopied(true)
+    setTimeout(() => setAdminCopied(false), 1500)
+  }
+
   if (link) {
     const path = new URL(link).pathname
     const shortLink = link.replace(/^https?:\/\//, '')
+    const shortAdminLink = adminLink ? adminLink.replace(/^https?:\/\//, '') : ''
+    
     return (
       <div className="min-h-screen bg-app text-ink">
         <div className="max-w-[430px] mx-auto">
           <StepTabs current={0} />
         </div>
         <div className="max-w-[430px] mx-auto px-[22px] pt-6 pb-4">
-          {/* 체크 아이콘 + 헤드라인 */}
           <Enter className="text-center">
             <motion.div
               initial={{ scale: 0 }}
@@ -170,9 +161,8 @@ export function CreateMeetingPage() {
             </p>
           </Enter>
 
-          {/* 참여 링크 카드 */}
           <Enter delay={0.08} className={`${cardCls} p-5 mt-7`}>
-            <CardLabel>참여 링크</CardLabel>
+            <CardLabel>참여 링크 (단톡방 공유용)</CardLabel>
             <div className="mt-3 bg-surface-sub/50 rounded-full px-3 py-2.5 overflow-hidden">
               <p data-testid="share-link" className="text-[13px] font-bold truncate">
                 {shortLink}
@@ -183,7 +173,23 @@ export function CreateMeetingPage() {
             </Button>
           </Enter>
 
-          {/* 참여자 목록 카드 */}
+          <Enter delay={0.10} className={`${cardCls} p-5 mt-4 border-2 border-primary/20`}>
+            <CardLabel>👑 관리자 링크 (주최자 보관용)</CardLabel>
+            <p className="text-[11px] text-ink-muted/80 mt-1">이 링크로 접속하면 별도의 로그인 없이 모임 수정 및 응답 마감이 가능해요!</p>
+            <div className="mt-3 bg-primary/5 rounded-full px-3 py-2.5 overflow-hidden border border-primary/10">
+              <p className="text-[13px] font-bold text-primary truncate">
+                {shortAdminLink}
+              </p>
+            </div>
+            <Button 
+              variant="dark"
+              onClick={() => void copyAdminLink()} 
+              className="w-full mt-4 !py-2.5 !text-[13px] !rounded-full"
+            >
+              {adminCopied ? '복사됐어요!' : '관리자 링크 복사하기'}
+            </Button>
+          </Enter>
+
           <Enter delay={0.12} className={`${cardCls} p-5 mt-4`}>
             <CardLabel>참여자 {people.length}명</CardLabel>
             <ul className="mt-2">
@@ -210,7 +216,6 @@ export function CreateMeetingPage() {
             </ul>
           </Enter>
 
-          {/* CTA */}
           <Enter delay={0.16}>
             <Button
               variant="dark"
@@ -230,14 +235,12 @@ export function CreateMeetingPage() {
     )
   }
 
-  // ---------- 모임 생성 폼 ----------
   return (
     <div className="min-h-screen bg-app text-ink">
       <div className="max-w-[430px] mx-auto">
         <StepTabs current={0} />
       </div>
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
-        {/* 헤드라인 먼저 → 본문 순 진입 */}
         <Enter>
           <header className="pt-5 pb-5">
             <h1 className="text-[28px] font-black tracking-[-1.4px] leading-tight">
@@ -250,7 +253,6 @@ export function CreateMeetingPage() {
         </Enter>
 
         <Enter delay={0.08}>
-          {/* 모임 정보 */}
           <section className="space-y-3">
             <SectionHeading>모임 정보</SectionHeading>
             <Field label="모임 제목">
@@ -272,7 +274,6 @@ export function CreateMeetingPage() {
             </Field>
           </section>
 
-          {/* 후보 시간 찾기 */}
           <section className="space-y-3 mt-5">
             <SectionHeading>후보 시간 찾기</SectionHeading>
 
@@ -332,7 +333,6 @@ export function CreateMeetingPage() {
             </Field>
           </section>
 
-          {/* 참여자 */}
           <section className="space-y-3 mt-5">
             <SectionHeading>참여자</SectionHeading>
             <div className="flex flex-wrap gap-2">
@@ -378,7 +378,6 @@ export function CreateMeetingPage() {
             </div>
           </section>
 
-          {/* 응답 받기 · 선택 — 기본 접힘, 필요할 때만 펼침 */}
           <section className="space-y-3 mt-5">
             <SectionHeading>응답 받기 · 선택</SectionHeading>
             {!deadlineOpen ? (
@@ -431,7 +430,6 @@ export function CreateMeetingPage() {
           )}
         </Enter>
 
-        {/* 주요 CTA — 화면 하단 고정 */}
         <div className="sticky bottom-0 -mx-[22px] px-[22px] pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
           <Button
             data-testid="create-meeting"

@@ -1,6 +1,3 @@
-// 딱 — 저장 계층 CRUD (마스터 문서 3.4)
-// UI는 아직 연결하지 않는다. 모든 함수는 실패 시 Error를 던진다.
-
 import { supabase } from './supabase'
 import type {
   AvailabilityRow,
@@ -18,14 +15,10 @@ function unwrap<T>(result: { data: T | null; error: { message: string } | null }
   return result.data
 }
 
-// ---------- date_range 헬퍼 ----------
-
-/** 'YYYY-MM-DD' 시작/끝(양끝 포함)을 Postgres daterange 리터럴로 */
 export function toDateRange(start: string, end: string): string {
   return `[${start},${end}]`
 }
 
-/** Postgres가 돌려주는 daterange 문자열(예: "[2026-07-06,2026-07-11)")을 양끝 포함 날짜로 */
 export function parseDateRange(range: string): { start: string; end: string } {
   const m = range.match(/^([[(])(\d{4}-\d{2}-\d{2}),(\d{4}-\d{2}-\d{2})([\])])$/)
   if (!m) throw new Error(`daterange 형식이 아니에요: ${range}`)
@@ -41,37 +34,33 @@ export function parseDateRange(range: string): { start: string; end: string } {
   }
 }
 
-// ---------- share code ----------
-
-// 0/O, 1/l/I 같은 헷갈리는 글자 제외한 base58
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
 
-/** 공유 링크용 추측 불가능한 코드 (기본 8자 ≈ 58^8 조합) */
 export function generateShareCode(length = 8): string {
   const bytes = crypto.getRandomValues(new Uint8Array(length))
   return Array.from(bytes, (b) => CODE_ALPHABET[b % CODE_ALPHABET.length]).join('')
 }
 
-// ---------- meetings ----------
-
 export interface CreateMeetingInput {
   title: string
   organizerName: string
-  /** 'YYYY-MM-DD' — 후보 범위 시작(포함) */
   dateStart: string
-  /** 'YYYY-MM-DD' — 후보 범위 끝(포함) */
   dateEnd: string
   durationSlots?: number
-  /** 설문 시간 범위 시작 (0~23). 기본 9 */
   hourStart?: number
-  /** 설문 시간 범위 끝 — 배타적 (1~24). 기본 18 */
   hourEnd?: number
-  /** ISO 8601 — 응답 마감. 생략하면 무기한 */
   deadline?: string
 }
 
+// admin_key는 anon이 테이블에서 직접 select할 수 없다 (보안 수정, 0006 마이그레이션 참고).
+// 아래 목록이 anon에게 실제로 허용된 컬럼 전부다 — admin_key는 절대 여기 넣지 않는다.
+const PUBLIC_MEETING_COLUMNS =
+  'id, title, organizer_name, date_range, duration_slots, hour_start, hour_end, deadline, confirmed_slot, share_code, created_at' as const
+
 export async function createMeeting(input: CreateMeetingInput): Promise<MeetingRow> {
-  return unwrap(
+  const adminKey = crypto.randomUUID()
+
+  const created = unwrap<Omit<MeetingRow, 'admin_key'>>(
     await supabase
       .from('meetings')
       .insert({
@@ -83,42 +72,107 @@ export async function createMeeting(input: CreateMeetingInput): Promise<MeetingR
         hour_end: input.hourEnd ?? 18,
         deadline: input.deadline ?? null,
         share_code: generateShareCode(),
+        admin_key: adminKey,
       })
-      .select()
+      .select(PUBLIC_MEETING_COLUMNS)
       .single(),
   )
+
+  // admin_key는 DB 응답에 없다(anon select 권한 밖) — 방금 생성한 값을 그대로 채워 돌려준다.
+  return { ...created, admin_key: adminKey }
 }
 
 export async function getMeeting(id: string): Promise<MeetingRow | null> {
-  const { data, error } = await supabase.from('meetings').select().eq('id', id).maybeSingle()
+  const { data, error } = await supabase
+    .from('meetings')
+    .select(PUBLIC_MEETING_COLUMNS)
+    .eq('id', id)
+    .maybeSingle()
   if (error) throw new Error(error.message)
   return data
 }
 
-/** 공유 링크의 코드로 모임 조회 */
+/** 공유 링크의 코드로 모임 조회 (참여자용 — admin_key는 응답에 없다) */
 export async function getMeetingByCode(code: string): Promise<MeetingRow | null> {
   const { data, error } = await supabase
     .from('meetings')
-    .select()
+    .select(PUBLIC_MEETING_COLUMNS)
     .eq('share_code', code)
     .maybeSingle()
   if (error) throw new Error(error.message)
   return data
 }
 
-export async function updateMeeting(
-  id: string,
-  patch: Partial<Omit<MeetingRow, 'id' | 'created_at'>>,
-): Promise<MeetingRow> {
-  return unwrap(await supabase.from('meetings').update(patch).eq('id', id).select().single())
+/**
+ * 관리자 키 검증 — share_code와 admin_key가 둘 다 맞을 때만 DB 안에서 SECURITY DEFINER
+ * 함수(verify_admin_key)가 대조한다. anon은 admin_key 컬럼을 직접 select할 수 없으므로,
+ * 이 함수를 통과하지 않고는 어떤 값이 진짜 admin_key인지 알아낼 방법이 없다.
+ */
+export async function verifyAdminKey(shareCode: string, adminKey: string): Promise<MeetingRow | null> {
+  const { data, error } = await supabase.rpc('verify_admin_key', {
+    p_share_code: shareCode,
+    p_admin_key: adminKey,
+  })
+  if (error) throw new Error(error.message)
+  return data?.[0] ?? null
 }
 
+export interface AdminUpdateMeetingInfoInput {
+  title: string
+  organizerName: string
+  dateStart: string
+  dateEnd: string
+  hourStart: number
+  hourEnd: number
+  durationSlots: number
+  /** ISO 8601, null이면 마감 없음 */
+  deadline: string | null
+}
+
+/** 관리자 전용 — 모임 정보 수정. admin_key가 맞는 행만 DB에서 실제로 갱신된다 */
+export async function adminUpdateMeetingInfo(
+  shareCode: string,
+  adminKey: string,
+  input: AdminUpdateMeetingInfoInput,
+): Promise<MeetingRow> {
+  const { data, error } = await supabase.rpc('admin_update_meeting_info', {
+    p_share_code: shareCode,
+    p_admin_key: adminKey,
+    p_title: input.title,
+    p_organizer_name: input.organizerName,
+    p_date_start: input.dateStart,
+    p_date_end: input.dateEnd,
+    p_hour_start: input.hourStart,
+    p_hour_end: input.hourEnd,
+    p_duration_slots: input.durationSlots,
+    p_deadline: input.deadline,
+  })
+  if (error) throw new Error(error.message)
+  if (!data?.[0]) throw new Error('관리자 인증에 실패했어요. 링크를 다시 확인해주세요.')
+  return data[0]
+}
+
+/** 관리자 전용 — 확정/확정취소 (confirmedSlot에 null을 넘기면 확정취소) */
+export async function adminSetConfirmedSlot(
+  shareCode: string,
+  adminKey: string,
+  confirmedSlot: string | null,
+): Promise<MeetingRow> {
+  const { data, error } = await supabase.rpc('admin_set_confirmed_slot', {
+    p_share_code: shareCode,
+    p_admin_key: adminKey,
+    p_confirmed_slot: confirmedSlot,
+  })
+  if (error) throw new Error(error.message)
+  if (!data?.[0]) throw new Error('관리자 인증에 실패했어요. 링크를 다시 확인해주세요.')
+  return data[0]
+}
+
+/** anon에게 delete 권한이 열려 있다 — 테스트 데이터 정리 등 운영 목적으로만 사용 */
 export async function deleteMeeting(id: string): Promise<void> {
   const { error } = await supabase.from('meetings').delete().eq('id', id)
   if (error) throw new Error(error.message)
 }
-
-// ---------- participants ----------
 
 export interface AddParticipantInput {
   meetingId: string
@@ -163,19 +217,11 @@ export async function deleteParticipant(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
-// ---------- availability ----------
-
 export interface SlotInput {
-  /** ISO 8601 — 슬롯 시작 시각 */
   slotDatetime: string
   state: SlotState
 }
 
-/**
- * 한 참여자의 가용 시간을 통째로 교체한다(제출 = 전체 저장).
- * 기존 행을 지우고 새로 넣는 대신 (participant_id, slot_datetime) 기준 upsert 후
- * 이번 제출에 없는 슬롯을 지워서, 부분 실패 시에도 이전 상태가 남도록 한다.
- */
 export async function replaceAvailability(
   participantId: string,
   slots: SlotInput[],
@@ -196,7 +242,6 @@ export async function replaceAvailability(
     )
   }
 
-  // 이번 제출에 포함되지 않은 기존 슬롯 제거
   const keep = new Set(saved.map((r) => r.id))
   const existing = await listAvailability(participantId)
   const stale = existing.filter((r) => !keep.has(r.id)).map((r) => r.id)
@@ -238,15 +283,21 @@ export async function listAvailability(participantId: string): Promise<Availabil
   )
 }
 
-/** 모임 전체의 가용 시간 — 추천 계산 입력용 */
 export async function listMeetingAvailability(
   meetingId: string,
 ): Promise<(AvailabilityRow & { participants: Pick<ParticipantRow, 'meeting_id'> })[]> {
+  // supabase-js는 schema.sql의 FK를 Relationships 메타데이터로 갖고 있지 않아
+  // (수동으로 유지하는 타입이라 비어 있음) 이 임베드 조인의 타입을 못 풀어낸다.
+  // 런타임 모양은 실제 쿼리와 정확히 일치하므로 반환 타입으로 단언한다.
+  const result = await supabase
+    .from('availability')
+    .select('*, participants!inner(meeting_id)')
+    .eq('participants.meeting_id', meetingId)
   return unwrap(
-    await supabase
-      .from('availability')
-      .select('*, participants!inner(meeting_id)')
-      .eq('participants.meeting_id', meetingId),
+    result as unknown as {
+      data: (AvailabilityRow & { participants: Pick<ParticipantRow, 'meeting_id'> })[] | null
+      error: { message: string } | null
+    },
   )
 }
 

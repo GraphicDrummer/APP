@@ -9,6 +9,8 @@ interface Props {
   confirmedSlot?: string | null
   onConfirm: (windowKey: string) => void
   onUnconfirm?: () => void
+  /** false면 확정/확정취소 버튼을 숨기고 정보만 보여준다 (참여자 링크 — 관리 권한 없음). 기본 true */
+  canManage?: boolean
 }
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
@@ -31,7 +33,7 @@ function Rise({
   )
 }
 
-/** 파랑(추천)/초록(확정) 공통 히어로 카드 레이아웃 */
+/** 파랑(추천)/초록(확정) 공통 히어로 카드 레이아웃. 버튼 props를 생략하면 정보만 보여준다 */
 function HeroCard({
   tone,
   label,
@@ -47,9 +49,9 @@ function HeroCard({
   day: string
   time: string
   chips: string[]
-  buttonText: string
-  buttonTestId: string
-  onButton: () => void
+  buttonText?: string
+  buttonTestId?: string
+  onButton?: () => void
 }) {
   return (
     <div className={`rounded-field p-[22px] ${tone === 'primary' ? 'bg-primary' : 'bg-confirm'}`}>
@@ -70,25 +72,33 @@ function HeroCard({
           </span>
         ))}
       </div>
-      <motion.button
-        type="button"
-        data-testid={buttonTestId}
-        onClick={onButton}
-        whileTap={press}
-        transition={pressSpring}
-        className={`mt-5 w-full h-[45px] rounded-[17px] bg-white text-[13px] font-black cursor-pointer ${
-          tone === 'primary' ? 'text-primary' : 'text-confirm'
-        }`}
-      >
-        {buttonText}
-      </motion.button>
+      {buttonText && onButton && (
+        <motion.button
+          type="button"
+          data-testid={buttonTestId}
+          onClick={onButton}
+          whileTap={press}
+          transition={pressSpring}
+          className={`mt-5 w-full h-[45px] rounded-[17px] bg-white text-[13px] font-black cursor-pointer ${
+            tone === 'primary' ? 'text-primary' : 'text-confirm'
+          }`}
+        >
+          {buttonText}
+        </motion.button>
+      )}
     </div>
   )
 }
 
 // 추천 카드 — 완벽한 슬롯이 있으면 파란 추천, 확정되면 초록, 없으면 차선책(NO PERFECT TIME).
 // 상태 전환은 크로스페이드 + 높이 스프링(layout)으로 보여준다.
-export function RecommendationCard({ result: R, confirmedSlot, onConfirm, onUnconfirm }: Props) {
+export function RecommendationCard({
+  result: R,
+  confirmedSlot,
+  onConfirm,
+  onUnconfirm,
+  canManage = true,
+}: Props) {
   const total = R.reqCount + R.optCount
   const isPerfect = R.perfect.length > 0
   const state = confirmedSlot ? 'confirmed' : isPerfect ? 'perfect' : 'ladder'
@@ -113,9 +123,9 @@ export function RecommendationCard({ result: R, confirmedSlot, onConfirm, onUnco
               day={`${WEEKDAYS_KO[confirmedDate.getDay()]}요일`}
               time={hhmm(confirmedDate.getHours())}
               chips={[`전원 참석 ${total}명`, '캘린더는 확정 탭에서']}
-              buttonText="확정 취소하기"
-              buttonTestId="unconfirm"
-              onButton={() => onUnconfirm?.()}
+              buttonText={canManage ? '확정 취소하기' : undefined}
+              buttonTestId={canManage ? 'unconfirm' : undefined}
+              onButton={canManage ? () => onUnconfirm?.() : undefined}
             />
           </motion.div>
         ) : state === 'perfect' ? (
@@ -129,9 +139,9 @@ export function RecommendationCard({ result: R, confirmedSlot, onConfirm, onUnco
                 `전원 참석 ${total}명`,
                 R.perfect.length > 1 ? `대안 ${R.perfect.length - 1}개` : '이 시간뿐이에요',
               ]}
-              buttonText="이 시간으로 확정하기"
-              buttonTestId="confirm-btn"
-              onButton={() => onConfirm(key(R.perfect[0].d, R.perfect[0].h))}
+              buttonText={canManage ? '이 시간으로 확정하기' : undefined}
+              buttonTestId={canManage ? 'confirm-btn' : undefined}
+              onButton={canManage ? () => onConfirm(key(R.perfect[0].d, R.perfect[0].h)) : undefined}
             />
           </motion.div>
         ) : (
