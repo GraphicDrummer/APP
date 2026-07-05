@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
+import { motion } from 'motion/react'
+import { riseIn, spring, STAGGER } from '../lib/motion'
+import { Button, Enter } from '../components/ui'
 
 interface DraftPerson {
   name: string
@@ -113,11 +116,13 @@ export function CreateMeetingPage() {
           <StepTabs current={0} />
         </div>
         <div className="max-w-[430px] mx-auto px-3.5 pt-10 pb-4 text-center">
-          <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase">
-            모임이 만들어졌어요
-          </p>
-          <h1 className="text-[22px] font-extrabold mt-1 mb-6">{title}</h1>
-          <div className="bg-white border border-neutral-200 rounded-xl p-4">
+          <Enter>
+            <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase">
+              모임이 만들어졌어요
+            </p>
+            <h1 className="text-[22px] font-extrabold mt-1 mb-6">{title}</h1>
+          </Enter>
+          <Enter delay={0.08} className="bg-white border border-neutral-200 rounded-xl p-4">
             <p className="text-[13px] text-neutral-500 mb-2">
               이 링크를 참여자들에게 공유하세요
             </p>
@@ -139,7 +144,7 @@ export function CreateMeetingPage() {
                 바로 열기
               </Link>
             </div>
-          </div>
+          </Enter>
           <Footer />
         </div>
       </div>
@@ -152,16 +157,19 @@ export function CreateMeetingPage() {
         <StepTabs current={0} />
       </div>
       <div className="max-w-[430px] mx-auto px-3.5 pt-2 pb-4">
-        <header className="mb-4 px-0.5">
-          <h1 className="text-[22px] font-extrabold">
-            딱<span className="text-blue-600">.</span> 새 모임
-          </h1>
-          <p className="text-[13px] text-neutral-500">
-            모임 정보를 입력하면 참여자에게 보낼 링크가 만들어져요.
-          </p>
-        </header>
+        {/* 헤드라인 먼저 → 본문 순 진입 */}
+        <Enter>
+          <header className="mb-4 px-0.5">
+            <h1 className="text-[22px] font-extrabold">
+              딱<span className="text-primary">.</span> 새 모임
+            </h1>
+            <p className="text-[13px] text-neutral-500">
+              모임 정보를 입력하면 참여자에게 보낼 링크가 만들어져요.
+            </p>
+          </header>
+        </Enter>
 
-        <div className="space-y-3">
+        <Enter delay={0.08} className="space-y-3">
           <label className="block">
             <span className="text-[13px] font-bold text-neutral-600">모임 제목</span>
             <input
@@ -320,8 +328,11 @@ export function CreateMeetingPage() {
             </div>
             <ul className="mt-2 space-y-1.5">
               {people.map((p, i) => (
-                <li
+                <motion.li
                   key={p.name}
+                  initial={riseIn.initial}
+                  animate={riseIn.animate}
+                  transition={{ ...spring, delay: i * STAGGER }}
                   className="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-3 py-2"
                 >
                   <span className="flex-1 text-sm font-bold">{p.name}</span>
@@ -345,26 +356,28 @@ export function CreateMeetingPage() {
                   >
                     ✕
                   </button>
-                </li>
+                </motion.li>
               ))}
             </ul>
           </div>
 
           {error && (
-            <p data-testid="create-error" className="text-[13px] font-bold text-red-600">
+            <p data-testid="create-error" className="text-[13px] font-bold text-danger">
               {error}
             </p>
           )}
+        </Enter>
 
-          <button
-            type="button"
+        {/* 주요 CTA — 화면 하단 고정 */}
+        <div className="sticky bottom-0 -mx-3.5 px-3.5 pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
+          <Button
             data-testid="create-meeting"
-            onClick={submit}
+            onClick={() => void submit()}
             disabled={saving}
-            className="w-full rounded-lg bg-neutral-900 text-white py-3 text-sm font-extrabold cursor-pointer disabled:opacity-50"
+            className="w-full"
           >
             {saving ? '저장 중…' : '모임 만들고 링크 받기'}
-          </button>
+          </Button>
         </div>
 
         <p className="mt-6 text-xs text-neutral-400 text-center">

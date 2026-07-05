@@ -1,11 +1,14 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { MotionConfig } from 'motion/react'
 import { CreateMeetingPage } from './pages/CreateMeetingPage'
 import { MeetingPage } from './pages/MeetingPage'
 import { EngineDemo } from './pages/EngineDemo'
 
 function App() {
   return (
-    <BrowserRouter>
+    // reducedMotion="user": prefers-reduced-motion 사용자는 transform 모션이 자동으로 최소화된다
+    <MotionConfig reducedMotion="user">
+      <BrowserRouter>
       <Routes>
         {/* 주최자: 모임 생성 → 공유 링크 발급 */}
         <Route path="/" element={<CreateMeetingPage />} />
@@ -13,8 +16,9 @@ function App() {
         <Route path="/m/:code" element={<MeetingPage />} />
         {/* 프리셋 기반 추천 엔진 데모 */}
         <Route path="/demo" element={<EngineDemo />} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </MotionConfig>
   )
 }
 

@@ -18,6 +18,9 @@ import { downloadIcs, googleCalendarUrl } from '../lib/calendar'
 import { downloadResultPng } from '../lib/resultImage'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
+import { motion } from 'motion/react'
+import { spring } from '../lib/motion'
+import { Button, Enter } from '../components/ui'
 import { AvailabilityGrid } from '../components/AvailabilityGrid'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
@@ -49,6 +52,8 @@ export function MeetingPage() {
   const [error, setError] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [copied, setCopied] = useState(false)
+  // 요일 일괄 변경 시 해당 열을 위→아래 순차 전환시키기 위한 마커
+  const [cascadeDay, setCascadeDay] = useState<number | null>(null)
 
   const monday = useMemo(
     () => (meeting ? mondayOf(parseDateRange(meeting.date_range).start) : null),
@@ -110,6 +115,7 @@ export function MeetingPage() {
 
   const cycleCell = (d: number, h: number) => {
     const k = `${d}-${h}`
+    setCascadeDay(null)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -126,6 +132,9 @@ export function MeetingPage() {
   // 요일 헤더 클릭 — 그 요일 전체 칸을 한 번에 순환.
   // 열이 한 가지 상태로 통일돼 있으면 다음 상태로, 섞여 있으면 '별로'로 모은다.
   const cycleDay = (d: number) => {
+    setCascadeDay(d)
+    // 캐스케이드가 끝나면 마커 해제 — 이후 개별 클릭은 딜레이 없이 전환
+    window.setTimeout(() => setCascadeDay(null), hours.length * 20 + 250)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -145,6 +154,7 @@ export function MeetingPage() {
 
   // 시간 라벨 클릭 — 그 시간 전체 칸(모든 요일)을 한 번에 순환. cycleDay와 같은 규칙.
   const cycleHour = (h: number) => {
+    setCascadeDay(null)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -256,21 +266,29 @@ export function MeetingPage() {
           <StepTabs current={2} />
         </div>
         <div className="max-w-[430px] mx-auto px-3.5 pt-8 pb-4 text-center">
-          <div
-            data-testid="confirmed-card"
-            className="bg-white rounded-2xl border border-blue-600 shadow-lg shadow-blue-600/10 p-6"
-          >
-            <div className="mx-auto w-14 h-14 rounded-full bg-green-600 text-white text-3xl leading-[56px] font-bold">
-              ✓
+          <Enter>
+            <div
+              data-testid="confirmed-card"
+              className="bg-white rounded-2xl border border-confirm shadow-lg shadow-confirm/10 p-6"
+            >
+              {/* 확정의 인과: 파랑(추천) → 초록(확정) 전환 + 스프링 팝 */}
+              <motion.div
+                initial={{ scale: 0, backgroundColor: '#3182f6' }}
+                animate={{ scale: 1, backgroundColor: '#27b25b' }}
+                transition={{ ...spring, delay: 0.05 }}
+                className="mx-auto w-14 h-14 rounded-full text-white text-3xl leading-[56px] font-bold"
+              >
+                ✓
+              </motion.div>
+              <p className="text-xs font-bold tracking-wide text-confirm mt-3">확정됐어요</p>
+              <p className="text-[13px] text-neutral-500 mt-2">{meeting.title}</p>
+              <p data-testid="confirmed-time" className="text-[26px] font-extrabold leading-tight">
+                {timeText}
+              </p>
             </div>
-            <p className="text-xs font-bold tracking-wide text-green-700 mt-3">확정됐어요</p>
-            <p className="text-[13px] text-neutral-500 mt-2">{meeting.title}</p>
-            <p data-testid="confirmed-time" className="text-[26px] font-extrabold leading-tight">
-              {timeText}
-            </p>
-          </div>
+          </Enter>
 
-          <div className="mt-4 space-y-2">
+          <Enter delay={0.08} className="mt-4 space-y-2">
             <button type="button" data-testid="download-ics" onClick={() => downloadIcs(ev)} className={btnCls}>
               내 캘린더에 추가 (.ics 다운로드)
             </button>
@@ -296,7 +314,7 @@ export function MeetingPage() {
             <button type="button" data-testid="copy-result-link" onClick={() => void copyLink()} className={btnCls}>
               {copied ? '복사됨!' : '링크 복사'}
             </button>
-          </div>
+          </Enter>
 
           <button
             type="button"
@@ -321,78 +339,87 @@ export function MeetingPage() {
         <StepTabs current={1} />
       </div>
       <div className="max-w-[430px] mx-auto px-3.5 pt-2 pb-4">
-        <header className="mb-4 px-0.5">
-          <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase">
-            {meeting?.organizer_name} 님의 모임
-          </p>
-          <h1 data-testid="meeting-title" className="text-[22px] font-extrabold">
-            {meeting?.title}
-          </h1>
-          <p className="text-[13px] text-neutral-500">
-            {range?.start} ~ {range?.end} · {meeting?.hour_start}:00~{meeting?.hour_end}:00 ·{' '}
-            {meeting?.duration_slots}시간
-            {meeting?.deadline &&
-              ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
-          </p>
-        </header>
+        {/* 헤드라인 먼저 → 본문 순 진입 */}
+        <Enter>
+          <header className="mb-4 px-0.5">
+            <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase">
+              {meeting?.organizer_name} 님의 모임
+            </p>
+            <h1 data-testid="meeting-title" className="text-[22px] font-extrabold">
+              {meeting?.title}
+            </h1>
+            <p className="text-[13px] text-neutral-500">
+              {range?.start} ~ {range?.end} · {meeting?.hour_start}:00~{meeting?.hour_end}:00 ·{' '}
+              {meeting?.duration_slots}시간
+              {meeting?.deadline &&
+                ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
+            </p>
+          </header>
+        </Enter>
 
-        {result && (
-          <RecommendationCard
-            result={result}
-            confirmed={null}
-            onConfirm={(k) => void confirmSlot(k)}
-          />
-        )}
-
-        <p className="text-[13px] font-bold text-neutral-500 mt-5 mb-2 px-1">
-          내 이름을 누르고, 안 되는 시간을 표시한 뒤 저장하세요
-        </p>
-        <PersonTabs
-          people={people}
-          selected={selected}
-          onSelect={(i) => {
-            setSelected(i)
-            setSaveState('idle')
-          }}
-          onToggleRole={toggleRole}
-        />
-
-        {people[selected] && (
-          <div className="mt-2.5">
-            <AvailabilityGrid
-              person={people[selected]}
-              onCycleCell={cycleCell}
-              hours={hours}
-              onCycleDay={cycleDay}
-              onCycleHour={cycleHour}
+        <Enter delay={0.08}>
+          {result && (
+            <RecommendationCard
+              result={result}
+              confirmed={null}
+              onConfirm={(k) => void confirmSlot(k)}
             />
-          </div>
-        )}
+          )}
 
-        {error && (
-          <p data-testid="meeting-error" className="mt-3 text-[13px] font-bold text-red-600">
-            {error}
+          <p className="text-[13px] font-bold text-neutral-500 mt-5 mb-2 px-1">
+            내 이름을 누르고, 안 되는 시간을 표시한 뒤 저장하세요
           </p>
-        )}
+          <PersonTabs
+            people={people}
+            selected={selected}
+            onSelect={(i) => {
+              setSelected(i)
+              setSaveState('idle')
+            }}
+            onToggleRole={toggleRole}
+          />
 
-        <button
-          type="button"
-          data-testid="save-availability"
-          onClick={() => void save()}
-          disabled={saveState === 'saving'}
-          className="w-full mt-3 rounded-lg bg-neutral-900 text-white py-3 text-sm font-extrabold cursor-pointer disabled:opacity-50"
-        >
-          {saveState === 'saving'
-            ? '저장 중…'
-            : saveState === 'saved'
-              ? '저장됐어요!'
-              : `${people[selected]?.id ?? ''} 시간 저장`}
-        </button>
-        {submitted && saveState !== 'saved' && (
-          <p className="mt-1.5 text-center text-[11.5px] text-neutral-400">
-            마지막 제출: {new Date(submitted).toLocaleString('ko-KR')}
-          </p>
-        )}
+          {people[selected] && (
+            <div className="mt-2.5">
+              <AvailabilityGrid
+                person={people[selected]}
+                onCycleCell={cycleCell}
+                hours={hours}
+                onCycleDay={cycleDay}
+                onCycleHour={cycleHour}
+                cascadeDay={cascadeDay}
+              />
+            </div>
+          )}
+
+          {error && (
+            <p data-testid="meeting-error" className="mt-3 text-[13px] font-bold text-danger">
+              {error}
+            </p>
+          )}
+        </Enter>
+
+        {/* 주요 CTA — 화면 하단 고정 */}
+        <div className="sticky bottom-0 -mx-3.5 px-3.5 pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
+          <Button
+            variant="dark"
+            data-testid="save-availability"
+            onClick={() => void save()}
+            disabled={saveState === 'saving'}
+            className="w-full"
+          >
+            {saveState === 'saving'
+              ? '저장 중…'
+              : saveState === 'saved'
+                ? '저장됐어요!'
+                : `${people[selected]?.id ?? ''} 시간 저장`}
+          </Button>
+          {submitted && saveState !== 'saved' && (
+            <p className="mt-1.5 text-center text-[11.5px] text-neutral-400">
+              마지막 제출: {new Date(submitted).toLocaleString('ko-KR')}
+            </p>
+          )}
+        </div>
         <Footer />
       </div>
     </div>

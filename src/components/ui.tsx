@@ -1,7 +1,9 @@
 // 공통 UI 프리미티브 — index.css의 디자인 토큰(@theme)에만 의존한다.
 // 개별 화면은 다음 단계에서 이 컴포넌트/클래스로 교체된다.
 
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
+import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
+import { motion, type HTMLMotionProps } from 'motion/react'
+import { press, pressSpring, spring, screenIn } from '../lib/motion'
 
 // ---------- 공통 클래스 ----------
 
@@ -24,17 +26,41 @@ const BUTTON_VARIANT: Record<ButtonVariant, string> = {
   danger: 'bg-danger text-white',
 }
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends HTMLMotionProps<'button'> {
   variant?: ButtonVariant
 }
 
 export function Button({ variant = 'primary', className = '', ...rest }: ButtonProps) {
   return (
-    <button
+    <motion.button
       type="button"
+      whileTap={press}
+      transition={pressSpring}
       className={`rounded-field px-4 py-3.5 text-[15px] font-extrabold cursor-pointer disabled:opacity-50 ${BUTTON_VARIANT[variant]} ${className}`}
       {...rest}
     />
+  )
+}
+
+/** 화면(단계) 진입 래퍼 — y 16px + 페이드. delay로 헤드라인→본문 순차 진입 */
+export function Enter({
+  children,
+  delay = 0,
+  className = '',
+}: {
+  children: ReactNode
+  delay?: number
+  className?: string
+}) {
+  return (
+    <motion.div
+      className={className}
+      initial={screenIn.initial}
+      animate={screenIn.animate}
+      transition={{ ...spring, delay }}
+    >
+      {children}
+    </motion.div>
   )
 }
 
@@ -69,15 +95,17 @@ export function RoleBadge({
   onClick?: () => void
 }) {
   return (
-    <button
+    <motion.button
       type="button"
       onClick={onClick}
+      whileTap={press}
+      transition={pressSpring}
       className={`rounded-full px-2 py-0.5 text-[10px] font-black cursor-pointer ${
         role === 'required' ? 'bg-primary text-white' : 'bg-surface-sub text-ink-muted'
       }`}
     >
       {role === 'required' ? '필참' : '선택'}
-    </button>
+    </motion.button>
   )
 }
 
