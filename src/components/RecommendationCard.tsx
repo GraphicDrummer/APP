@@ -103,9 +103,9 @@ export function RecommendationCard({
   const isPerfect = R.perfect.length > 0
   const state = confirmedSlot ? 'confirmed' : isPerfect ? 'perfect' : 'ladder'
 
-  // 차선책 옵션: ① 별로 허용(l1) → ② 일부 제외(l2)
+  // 차선책 옵션: ① 애매 허용(l1) → ② 일부 제외(l2)
   const options: { label: string; w: WindowEval; cost: string }[] = []
-  if (R.l1) options.push({ label: '별로인 시간 포함', w: R.l1, cost: `${R.l1.softNames.join(', ')} 양보` })
+  if (R.l1) options.push({ label: '애매한 시간 포함', w: R.l1, cost: `${R.l1.softNames.join(', ')} 양보` })
   for (const w of R.l2.slice(0, 2 - options.length)) {
     options.push({ label: '일부 제외', w, cost: `${w.missingOpt.join(', ')} 제외` })
   }

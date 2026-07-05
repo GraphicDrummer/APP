@@ -4,7 +4,8 @@
 // interface가 아니라 type 별칭이어야 한다.
 
 export type Role = 'required' | 'optional'
-export type SlotState = 'free' | 'soft' | 'blocked'
+// 기본값(저장 안 됨) = 불가. 명시적으로 저장되는 건 가능/애매뿐이다.
+export type SlotState = 'available' | 'soft'
 
 export type MeetingRow = {
   id: string

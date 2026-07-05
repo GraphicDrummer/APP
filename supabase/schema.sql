@@ -42,13 +42,13 @@ create table public.participants (
 
 create index participants_meeting_idx on public.participants (meeting_id);
 
--- 가용 시간 — 표시된 슬롯만 저장하는 희소 구조도 가능하지만,
--- 마스터 문서대로 free/soft/blocked 세 상태를 모두 명시 저장한다.
+-- 가용 시간 — 표시된 슬롯만 저장하는 희소 구조.
+-- 기본값(저장 안 됨) = 불가. 참여자가 명시적으로 표시한 가능/애매만 저장한다.
 create table public.availability (
   id             uuid primary key default gen_random_uuid(),
   participant_id uuid not null references public.participants(id) on delete cascade,
   slot_datetime  timestamptz not null,
-  state          text not null check (state in ('free', 'soft', 'blocked')),
+  state          text not null check (state in ('available', 'soft')),
   -- 같은 참여자가 같은 슬롯을 두 번 가질 수 없다 → upsert 기준
   unique (participant_id, slot_datetime)
 );

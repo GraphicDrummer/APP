@@ -6,10 +6,11 @@ import { AvailabilityGrid } from '../components/AvailabilityGrid'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
 
+// 기본값(빈 칸) = 불가. 눌러서 되는 시간만 칠한다: 불가(기본) → 가능 → 애매 → 불가.
 const NEXT_STATE: Record<string, CellState | undefined> = {
-  free: 'soft',
-  soft: 'blocked',
-  blocked: undefined, // 다시 '가능'으로 — 키 삭제
+  blocked: 'available',
+  available: 'soft',
+  soft: undefined, // 다시 '불가'로 — 키 삭제
 }
 
 // 프리셋 시나리오로 추천 엔진을 만져보는 데모 (/demo)
@@ -34,7 +35,7 @@ export function EngineDemo() {
       prev.map((p, i) => {
         if (i !== selected) return p
         const cells = { ...p.cells }
-        const next = NEXT_STATE[cells[k] ?? 'free']
+        const next = NEXT_STATE[cells[k] ?? 'blocked']
         if (next) cells[k] = next
         else delete cells[k]
         return { ...p, cells }
@@ -63,7 +64,7 @@ export function EngineDemo() {
             딱<span className="text-blue-600">.</span> 추천 엔진
           </h1>
           <p className="text-[13px] text-neutral-500">
-            칸을 눌러 상태를 바꾸면, 추천이 실시간으로 다시 계산돼요.
+            되는 시간을 칠해주세요. 애매하면 노랑으로! 추천이 실시간으로 다시 계산돼요.
           </p>
         </header>
 

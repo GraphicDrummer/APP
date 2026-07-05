@@ -22,15 +22,43 @@ export function ChipRow({
   testId: string
 }) {
   const scroller = useRef<HTMLDivElement>(null)
+  // 마우스 드래그로도 스크롤되게 — 터치는 브라우저 네이티브 스크롤에 맡긴다
+  const drag = useRef({ down: false, moved: false, startX: 0, startScroll: 0 })
 
-  // 선택된 칩이 보이도록 스크롤 (마운트/값 변경 시)
+  // 선택된 칩이 보이도록 스크롤 — 최초 렌더 때 한 번만.
+  // (매 클릭마다 재발동하면 자유 스크롤/드래그와 충돌해서 위치가 멋대로 튄다)
   useEffect(() => {
     const row = scroller.current
     const chip = row?.querySelector<HTMLElement>(`[data-hour="${value}"]`)
     if (row && chip) {
       row.scrollTo({ left: chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2 })
     }
-  }, [value])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse') return
+    const row = scroller.current
+    if (!row) return
+    drag.current = { down: true, moved: false, startX: e.clientX, startScroll: row.scrollLeft }
+  }
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current.down) return
+    const row = scroller.current
+    if (!row) return
+    const dx = e.clientX - drag.current.startX
+    if (Math.abs(dx) > 4) drag.current.moved = true
+    row.scrollLeft = drag.current.startScroll - dx
+  }
+  const endDrag = () => {
+    if (!drag.current.down) return
+    drag.current.down = false
+    // 드래그 끝의 클릭 이벤트가 칩을 잘못 선택하지 않도록, moved 플래그는
+    // 이번 틱의 click 핸들러가 확인한 다음에 리셋한다.
+    window.setTimeout(() => {
+      drag.current.moved = false
+    }, 0)
+  }
 
   return (
     <div className="flex items-center gap-2">
@@ -40,7 +68,11 @@ export function ChipRow({
       <div
         ref={scroller}
         data-testid={testId}
-        className="flex gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
+        className="flex gap-1.5 overflow-x-auto py-0.5 cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {options.map((h) => (
           <motion.button
@@ -48,7 +80,10 @@ export function ChipRow({
             type="button"
             data-hour={h}
             aria-pressed={h === value}
-            onClick={() => onChange(h)}
+            onClick={() => {
+              if (drag.current.moved) return // 드래그 끝의 클릭은 무시
+              onChange(h)
+            }}
             whileTap={press}
             transition={pressSpring}
             className={`flex-none rounded-full px-3 py-1.5 text-[12px] font-bold cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${

@@ -28,10 +28,11 @@ import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
 
+// 기본값(빈 칸) = 불가. 눌러서 되는 시간만 칠한다: 불가(기본) → 가능 → 애매 → 불가.
 const NEXT_STATE: Record<string, CellState | undefined> = {
-  free: 'soft',
-  soft: 'blocked',
-  blocked: undefined,
+  blocked: 'available',
+  available: 'soft',
+  soft: undefined,
 }
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
@@ -183,7 +184,6 @@ export function MeetingPage() {
 
       const cellsById = new Map<string, Partial<Record<string, CellState>>>()
       for (const a of avail) {
-        if (a.state === 'free') continue
         const slot = isoToSlot(base, a.slot_datetime)
         if (!slot) continue
         const cells = cellsById.get(a.participant_id) ?? {}
@@ -212,6 +212,9 @@ export function MeetingPage() {
     [people, hours],
   )
 
+  // 아직 시간표를 제출하지 않은 참여자 — 놀리는 톤의 대기 안내에 쓴다
+  const pendingNames = useMemo(() => rows.filter((r) => !r.submitted_at).map((r) => r.name), [rows])
+
   const cycleCell = (d: number, h: number) => {
     const k = `${d}-${h}`
     setCascadeDay(null)
@@ -219,7 +222,7 @@ export function MeetingPage() {
       prev.map((p, i) => {
         if (i !== selected) return p
         const cells = { ...p.cells }
-        const next = NEXT_STATE[cells[k] ?? 'free']
+        const next = NEXT_STATE[cells[k] ?? 'blocked']
         if (next) cells[k] = next
         else delete cells[k]
         return { ...p, cells }
@@ -234,7 +237,7 @@ export function MeetingPage() {
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
-        const states = hours.map((h) => p.cells[`${d}-${h}`] ?? 'free')
+        const states = hours.map((h) => p.cells[`${d}-${h}`] ?? 'blocked')
         const uniform = states.every((s) => s === states[0]) ? states[0] : null
         const next = uniform ? NEXT_STATE[uniform] : 'soft'
         const cells = { ...p.cells }
@@ -254,7 +257,7 @@ export function MeetingPage() {
       prev.map((p, i) => {
         if (i !== selected) return p
         const days = [0, 1, 2, 3, 4]
-        const states = days.map((d) => p.cells[`${d}-${h}`] ?? 'free')
+        const states = days.map((d) => p.cells[`${d}-${h}`] ?? 'blocked')
         const uniform = states.every((s) => s === states[0]) ? states[0] : null
         const next = uniform ? NEXT_STATE[uniform] : 'soft'
         const cells = { ...p.cells }
@@ -722,9 +725,18 @@ export function MeetingPage() {
             />
           )}
 
-          <p className="text-[13px] font-bold text-ink-muted mt-6 mb-2.5 px-0.5">
-            내 이름을 누르고, 안 되는 시간을 표시한 뒤 저장하세요
-          </p>
+          <div className="mt-6 mb-2.5 space-y-1.5">
+            {pendingNames.length > 0 && (
+              <p className="text-[12.5px] font-bold text-soft-ink bg-soft-bg/60 rounded-field px-3 py-2">
+                {pendingNames.length === 1
+                  ? `모두가 ${pendingNames[0]}님만 기다리고 있어요!`
+                  : `아직 ${pendingNames.length}명이 고민 중이에요 🐭`}
+              </p>
+            )}
+            <p className="text-[13px] font-bold text-ink-muted px-0.5">
+              내 이름을 누르고, 되는 시간을 칠해주세요. 애매하면 노랑으로!
+            </p>
+          </div>
           <PersonTabs
             people={people}
             selected={selected}

@@ -3,7 +3,7 @@ import { DAYS, HOURS, key, type CellState, type Person } from '../engine'
 import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
 
-type DisplayState = CellState | 'free'
+type DisplayState = CellState | 'blocked'
 
 interface Props {
   person: Person
@@ -18,14 +18,15 @@ interface Props {
   cascadeDay?: number | null
 }
 
-// 칸은 상태와 무관하게 크기 완전 고정 — 텍스트 없이 색으로만 구분한다
+// 칸은 상태와 무관하게 크기 완전 고정 — 텍스트 없이 색으로만 구분한다.
+// 기본값(빈 칸) = 불가. 되는 시간만 명시적으로 "칠해서" 표시한다.
 const CELL_STYLE: Record<DisplayState, string> = {
-  free: 'bg-white border-line',
+  available: 'bg-primary border-primary',
   soft: 'bg-soft-bg border-soft',
-  blocked: 'bg-blocked border-blocked',
+  blocked: 'bg-surface-sub border-line',
 }
 
-const STATE_LABEL: Record<DisplayState, string> = { free: '가능', soft: '별로', blocked: '불가' }
+const STATE_LABEL: Record<DisplayState, string> = { available: '가능', soft: '애매', blocked: '불가' }
 
 /** 열/행이 한 가지 상태로 통일돼 있으면 그 상태, 아니면 null */
 function uniformState(states: DisplayState[]): DisplayState | null {
@@ -34,12 +35,12 @@ function uniformState(states: DisplayState[]): DisplayState | null {
 
 // 헤더 버튼 — 열 전체가 같은 상태면 그 상태의 색을 입어 인과를 보여준다
 const HEADER_STYLE: Record<string, string> = {
-  free: 'bg-surface-sub text-ink',
+  available: 'bg-primary text-white',
   soft: 'bg-soft-bg border border-soft text-soft-ink',
-  blocked: 'bg-blocked text-white',
+  blocked: 'bg-surface-sub text-ink',
 }
 
-// 요일×시간 그리드 — 칸을 누르면 가능 → 별로 → 불가 순으로 순환
+// 요일×시간 그리드 — 칸을 누르면 불가(기본) → 가능 → 애매 → 불가 순으로 순환
 export function AvailabilityGrid({
   person,
   onCycleCell,
@@ -48,7 +49,7 @@ export function AvailabilityGrid({
   onCycleHour,
   cascadeDay = null,
 }: Props) {
-  const cellState = (d: number, h: number): DisplayState => person.cells[key(d, h)] ?? 'free'
+  const cellState = (d: number, h: number): DisplayState => person.cells[key(d, h)] ?? 'blocked'
 
   return (
     <div>
@@ -67,7 +68,7 @@ export function AvailabilityGrid({
             <th className="w-11" />
             {DAYS.map((d, i) => {
               const colState = uniformState(hours.map((h) => cellState(i, h)))
-              const style = HEADER_STYLE[colState ?? 'free']
+              const style = HEADER_STYLE[colState ?? 'blocked']
               return (
                 <th key={d}>
                   {onCycleDay ? (
@@ -140,12 +141,12 @@ export function AvailabilityGrid({
   )
 }
 
-/** 우측 상단 색 범례 — 가능/별로/불가 */
+/** 우측 상단 색 범례 — 가능/애매/불가 */
 export function GridLegend() {
   const items: { label: string; cls: string }[] = [
-    { label: '가능', cls: 'bg-white border border-line' },
-    { label: '별로', cls: 'bg-soft-bg border border-soft' },
-    { label: '불가', cls: 'bg-blocked' },
+    { label: '가능', cls: 'bg-primary border border-primary' },
+    { label: '애매', cls: 'bg-soft-bg border border-soft' },
+    { label: '불가', cls: 'bg-surface-sub border border-line' },
   ]
   return (
     <div className="flex items-center gap-2.5">

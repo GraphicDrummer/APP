@@ -209,7 +209,7 @@ export function CreateMeetingPage() {
                   </span>
                   <span className="flex items-center gap-2">
                     <RoleBadge role={p.role} variant="tint" />
-                    <span className="text-[10px] font-bold text-ink-muted/50">미응답</span>
+                    <span className="text-[10px] font-bold text-ink-muted/50">🐭 고민 중</span>
                   </span>
                 </motion.li>
               ))}

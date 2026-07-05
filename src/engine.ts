@@ -8,12 +8,12 @@ export const HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17] as const
 export type Day = (typeof DAYS)[number]
 export type Hour = (typeof HOURS)[number]
 export type Role = 'required' | 'optional'
-export type CellState = 'soft' | 'blocked'
+export type CellState = 'available' | 'soft'
 
 export interface Person {
   id: string
   role: Role
-  // 표시된 칸만 존재하는 희소 맵 — 키가 없으면 '가능'
+  // 표시된 칸만 존재하는 희소 맵 — 키가 없으면 '불가'(기본값). 되는 시간만 표시한다.
   cells: Partial<Record<string, CellState>>
 }
 
@@ -53,8 +53,10 @@ export function evalWindow(d: number, h: number, ppl: Person[]): WindowEval {
 
   for (const p of ppl) {
     const s = p.cells[key(d, h)]
+    // 표시 안 된 칸(기본값) = 불가. 'available'/'soft'로 명시 표시된 칸만 가능으로 친다.
+    const isAvailable = s === 'available' || s === 'soft'
     if (p.role === 'required') {
-      if (s === 'blocked') {
+      if (!isAvailable) {
         reqBlocked++
         blockingReq.push(p.id)
       } else {
@@ -65,7 +67,7 @@ export function evalWindow(d: number, h: number, ppl: Person[]): WindowEval {
         }
       }
     } else {
-      if (s === 'blocked') {
+      if (!isAvailable) {
         missingOpt.push(p.id)
       } else {
         optAvail++
