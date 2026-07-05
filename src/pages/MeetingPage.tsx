@@ -19,7 +19,7 @@ import { downloadResultPng } from '../lib/resultImage'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { motion } from 'motion/react'
-import { spring } from '../lib/motion'
+import { press, pressSpring, spring } from '../lib/motion'
 import { Button, Enter } from '../components/ui'
 import { AvailabilityGrid, GridLegend } from '../components/AvailabilityGrid'
 import { PersonTabs } from '../components/PersonTabs'
@@ -33,11 +33,77 @@ const NEXT_STATE: Record<string, CellState | undefined> = {
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
 
-/** 확정 시각 표시용: "2026-07-06 (월) 14:00" */
+/** 확정 시각 표시용: "2026-07-06 (월) 14:00" — 앱 전체 콜론 24시간제(hhmm)와 통일 */
 function fmtConfirmed(iso: string): string {
   const d = new Date(iso)
   const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  return `${date} (${WEEKDAYS_KO[d.getDay()]}) ${String(d.getHours()).padStart(2, '0')}:00`
+  return `${date} (${WEEKDAYS_KO[d.getDay()]}) ${hhmm(d.getHours())}`
+}
+
+const iconCls = 'shrink-0' as const
+
+function CheckIcon({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
+      <path d="M5 12.5 10 17.5 19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function CalendarIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
+      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="white" strokeWidth="1.8" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function LinkIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
+      <path
+        d="M9.5 14.5 14.5 9.5M10.5 6.5l1-1a4 4 0 0 1 5.657 5.657l-1.5 1.5M13.5 17.5l-1 1A4 4 0 0 1 6.843 12.843l1.5-1.5"
+        stroke="#1a2028"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function ImageIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="#1a2028" strokeWidth="1.8" />
+      <circle cx="8.5" cy="9.5" r="1.5" stroke="#1a2028" strokeWidth="1.8" />
+      <path d="m4.5 16 4.5-4.5 3 3 4-4 4.5 4.5" stroke="#1a2028" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function RestartIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
+      <path
+        d="M4 12a8 8 0 1 1 2.343 5.657M4 12V6m0 6h6"
+        stroke="#6b7684"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function OtherCalendarIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
+      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="#6b7684" strokeWidth="1.8" />
+      <path d="M3.5 9.5h17" stroke="#6b7684" strokeWidth="1.8" />
+    </svg>
+  )
 }
 
 // 공유 링크(/m/:code)로 들어오는 참여자 입력 화면
@@ -263,8 +329,6 @@ export function MeetingPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     }
-    const btnCls =
-      'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm font-bold cursor-pointer text-center'
     return (
       <div className="min-h-screen bg-app text-ink">
         <div className="max-w-[430px] mx-auto">
@@ -274,65 +338,102 @@ export function MeetingPage() {
             onStepClick={() => setView('adjust')}
           />
         </div>
-        <div className="max-w-[430px] mx-auto px-3.5 pt-8 pb-4 text-center">
+        <div className="max-w-[430px] mx-auto px-[22px] pt-8 pb-4 text-center">
           <Enter>
             <div
               data-testid="confirmed-card"
-              className="bg-white rounded-2xl border border-confirm shadow-lg shadow-confirm/10 p-6"
+              className="bg-confirm rounded-card p-8 flex flex-col items-center gap-5"
             >
-              {/* 확정의 인과: 파랑(추천) → 초록(확정) 전환 + 스프링 팝 */}
               <motion.div
-                initial={{ scale: 0, backgroundColor: '#3182f6' }}
-                animate={{ scale: 1, backgroundColor: '#27b25b' }}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
                 transition={{ ...spring, delay: 0.05 }}
-                className="mx-auto w-14 h-14 rounded-full text-white text-3xl leading-[56px] font-bold"
+                className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center"
               >
-                ✓
+                <CheckIcon />
               </motion.div>
-              <p className="text-xs font-bold tracking-wide text-confirm mt-3">확정됐어요</p>
-              <p className="text-[13px] text-neutral-500 mt-2">{meeting.title}</p>
-              <p data-testid="confirmed-time" className="text-[26px] font-extrabold leading-tight">
+              <div>
+                <p className="text-[11px] font-black tracking-[2.2px] uppercase text-white/70">
+                  MEETING CONFIRMED
+                </p>
+                <p className="text-[15px] font-bold text-white/90 mt-1">{meeting.title}</p>
+              </div>
+              <p
+                data-testid="confirmed-time"
+                className="text-[24px] font-black tracking-[-1px] text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.15)]"
+              >
                 {timeText}
               </p>
             </div>
           </Enter>
 
-          <Enter delay={0.08} className="mt-4 space-y-2">
-            <button type="button" data-testid="download-ics" onClick={() => downloadIcs(ev)} className={btnCls}>
-              내 캘린더에 추가 (.ics 다운로드)
-            </button>
-            <a
+          <Enter delay={0.08} className="flex flex-col gap-3 mt-4">
+            <motion.a
               data-testid="google-calendar"
               href={googleCalendarUrl(ev)}
               target="_blank"
               rel="noreferrer"
-              className={`${btnCls} block`}
+              whileTap={press}
+              transition={pressSpring}
+              className="w-full rounded-field bg-primary text-white py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
             >
-              구글 캘린더에 추가
-            </a>
-            <button
-              type="button"
-              data-testid="download-png"
-              onClick={() =>
-                downloadResultPng({ title: meeting.title, organizer: meeting.organizer_name, timeText })
-              }
-              className={btnCls}
-            >
-              결과 이미지 저장 (PNG)
-            </button>
-            <button type="button" data-testid="copy-result-link" onClick={() => void copyLink()} className={btnCls}>
-              {copied ? '복사됨!' : '링크 복사'}
-            </button>
+              <CalendarIcon />
+              캘린더에 일정 추가
+            </motion.a>
+
+            <div className="flex gap-2.5">
+              <motion.button
+                type="button"
+                data-testid="copy-result-link"
+                onClick={() => void copyLink()}
+                whileTap={press}
+                transition={pressSpring}
+                className="flex-1 rounded-field border border-line bg-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <LinkIcon />
+                {copied ? '복사됨!' : '링크 복사'}
+              </motion.button>
+              <motion.button
+                type="button"
+                data-testid="download-png"
+                onClick={() =>
+                  downloadResultPng({ title: meeting.title, organizer: meeting.organizer_name, timeText })
+                }
+                whileTap={press}
+                transition={pressSpring}
+                className="flex-1 rounded-field border border-line bg-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <ImageIcon />
+                이미지 저장
+              </motion.button>
+            </div>
           </Enter>
 
-          <button
+          <Enter delay={0.12}>
+            <motion.button
+              type="button"
+              data-testid="download-ics"
+              onClick={() => downloadIcs(ev)}
+              whileTap={press}
+              transition={pressSpring}
+              className="mt-4 mx-auto flex items-center gap-1.5 text-[12px] font-bold text-ink-muted/60 cursor-pointer"
+            >
+              <OtherCalendarIcon />
+              다른 캘린더 (.ics)
+            </motion.button>
+          </Enter>
+
+          <motion.button
             type="button"
             data-testid="unconfirm"
             onClick={() => void unconfirm()}
-            className="mt-5 text-[11.5px] text-neutral-400 underline cursor-pointer"
+            whileTap={press}
+            transition={pressSpring}
+            className="mt-6 mx-auto flex items-center gap-1.5 text-[13px] font-black text-ink-muted/50 cursor-pointer"
           >
-            확정 취소하고 다시 조율하기
-          </button>
+            <RestartIcon />
+            조율 다시 시작하기
+          </motion.button>
           <Footer />
         </div>
       </div>
