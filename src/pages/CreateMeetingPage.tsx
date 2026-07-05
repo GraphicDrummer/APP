@@ -1,19 +1,16 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
+import { riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
-import { motion } from 'motion/react'
-import { riseIn, spring, STAGGER } from '../lib/motion'
-import { Button, Enter } from '../components/ui'
+import { Button, Enter, Field, RoleBadge, Select, TextInput, cardCls } from '../components/ui'
 
 interface DraftPerson {
   name: string
   role: Role
 }
-
-const inputCls =
-  'w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:border-neutral-900'
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
@@ -21,8 +18,16 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 const DEADLINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
 const DEADLINE_MINUTES = [0, 15, 30, 45]
 
-// 주최자용 모임 생성 화면 — 저장되면 공유 링크를 보여준다
+/** 섹션 라벨 — 12px Black, 대문자 자간 (디자인 카드 헤더용) */
+function CardLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[12px] font-black tracking-[0.6px] uppercase text-ink-muted">{children}</p>
+  )
+}
+
+// 주최자용 모임 생성 화면 — 저장되면 공유 링크 화면(정보 단계 완료)을 보여준다
 export function CreateMeetingPage() {
+  const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [organizer, setOrganizer] = useState('')
   const [dateStart, setDateStart] = useState('')
@@ -65,11 +70,11 @@ export function CreateMeetingPage() {
       return
     }
     if (dateEnd < dateStart) {
-      setError('끝 날짜가 시작 날짜보다 빠를 수 없어요.')
+      setError('종료일이 시작일보다 빠를 수 없어요.')
       return
     }
     if (hourEnd <= hourStart) {
-      setError('설문 시간 범위의 끝이 시작보다 늦어야 해요.')
+      setError('시간 범위의 끝이 시작보다 늦어야 해요.')
       return
     }
     setSaving(true)
@@ -107,43 +112,88 @@ export function CreateMeetingPage() {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  // 저장 완료 — 공유 링크 화면
+  // ---------- 생성 완료 화면 (정보 단계 완료) ----------
   if (link) {
     const path = new URL(link).pathname
+    const shortLink = link.replace(/^https?:\/\//, '')
     return (
       <div className="min-h-screen bg-app text-ink">
         <div className="max-w-[430px] mx-auto">
           <StepTabs current={0} />
         </div>
-        <div className="max-w-[430px] mx-auto px-3.5 pt-10 pb-4 text-center">
-          <Enter>
-            <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase">
-              모임이 만들어졌어요
+        <div className="max-w-[430px] mx-auto px-[22px] pt-6 pb-4">
+          {/* 체크 아이콘 + 헤드라인 */}
+          <Enter className="text-center">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ ...spring, delay: 0.05 }}
+              className="mx-auto w-[52px] h-[52px] rounded-[15px] bg-primary flex items-center justify-center"
+            >
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M5 12.5 10 17.5 19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </motion.div>
+            <p className="text-[13px] font-bold text-ink-muted mt-4">모임이 만들어졌어요</p>
+            <h1 className="text-[22.5px] font-black tracking-[-1.1px] mt-1">{title}</h1>
+            <p className="text-[13px] text-ink-muted mt-1">
+              {dateStart} ~ {dateEnd} · {durationSlots}시간
             </p>
-            <h1 className="text-[22px] font-extrabold mt-1 mb-6">{title}</h1>
           </Enter>
-          <Enter delay={0.08} className="bg-white border border-neutral-200 rounded-xl p-4">
-            <p className="text-[13px] text-neutral-500 mb-2">
-              이 링크를 참여자들에게 공유하세요
-            </p>
-            <p data-testid="share-link" className="text-sm font-bold break-all text-blue-700">
-              {link}
-            </p>
-            <div className="flex gap-2 mt-4">
-              <button
-                type="button"
-                onClick={copyLink}
-                className="flex-1 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm font-bold cursor-pointer"
-              >
-                {copied ? '복사됨!' : '링크 복사'}
-              </button>
-              <Link
-                to={path}
-                className="flex-1 rounded-lg bg-neutral-900 text-white px-3 py-2 text-sm font-bold"
-              >
-                바로 열기
-              </Link>
+
+          {/* 참여 링크 카드 */}
+          <Enter delay={0.08} className={`${cardCls} p-5 mt-7`}>
+            <CardLabel>참여 링크</CardLabel>
+            <div className="mt-3 bg-surface-sub/50 rounded-full px-3 py-2.5 overflow-hidden">
+              <p data-testid="share-link" className="text-[13px] font-bold truncate">
+                {shortLink}
+              </p>
             </div>
+            <Button onClick={() => void copyLink()} className="w-full mt-4 !py-2.5 !text-[13px] !rounded-full">
+              {copied ? '복사됐어요!' : '링크 복사하기'}
+            </Button>
+          </Enter>
+
+          {/* 참여자 목록 카드 */}
+          <Enter delay={0.12} className={`${cardCls} p-5 mt-4`}>
+            <CardLabel>참여자 {people.length}명</CardLabel>
+            <ul className="mt-2">
+              {people.map((p, i) => (
+                <motion.li
+                  key={p.name}
+                  initial={riseIn.initial}
+                  animate={riseIn.animate}
+                  transition={{ ...spring, delay: 0.12 + i * STAGGER }}
+                  className="flex items-center justify-between py-2"
+                >
+                  <span className="flex items-center gap-2.5">
+                    <span className="w-[26px] h-[26px] rounded-full bg-surface-sub text-ink-muted text-[11px] font-black flex items-center justify-center">
+                      {p.name[0]}
+                    </span>
+                    <span className="text-[13px] font-bold">{p.name}</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <RoleBadge role={p.role} variant="tint" />
+                    <span className="text-[10px] font-bold text-ink-muted/50">미응답</span>
+                  </span>
+                </motion.li>
+              ))}
+            </ul>
+          </Enter>
+
+          {/* CTA */}
+          <Enter delay={0.16}>
+            <Button
+              variant="dark"
+              data-testid="open-meeting"
+              onClick={() => void navigate(path)}
+              className="w-full mt-6"
+            >
+              내 시간 입력하기 →
+            </Button>
+            <p className="text-center text-[11px] font-bold text-ink-muted/50 mt-3">
+              참여자들에게 링크를 공유해 각자 응답받으세요
+            </p>
           </Enter>
           <Footer />
         </div>
@@ -151,99 +201,97 @@ export function CreateMeetingPage() {
     )
   }
 
+  // ---------- 모임 생성 폼 ----------
   return (
     <div className="min-h-screen bg-app text-ink">
       <div className="max-w-[430px] mx-auto">
         <StepTabs current={0} />
       </div>
-      <div className="max-w-[430px] mx-auto px-3.5 pt-2 pb-4">
+      <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
         {/* 헤드라인 먼저 → 본문 순 진입 */}
         <Enter>
-          <header className="mb-4 px-0.5">
-            <h1 className="text-[22px] font-extrabold">
-              딱<span className="text-primary">.</span> 새 모임
+          <header className="pt-5 pb-5">
+            <h1 className="text-[28px] font-black tracking-[-1.4px] leading-tight">
+              딱<span className="text-primary">.</span>
             </h1>
-            <p className="text-[13px] text-neutral-500">
-              모임 정보를 입력하면 참여자에게 보낼 링크가 만들어져요.
+            <p className="text-[13px] text-ink-muted mt-1">
+              모두에게 <b className="text-ink">딱 맞는 시간</b>을 골라드려요.
             </p>
           </header>
         </Enter>
 
-        <Enter delay={0.08} className="space-y-3">
-          <label className="block">
-            <span className="text-[13px] font-bold text-neutral-600">모임 제목</span>
-            <input
+        <Enter delay={0.08} className="space-y-[18px]">
+          <Field label="모임 제목">
+            <TextInput
               data-testid="title"
-              className={inputCls}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="예: 7월 정기 회의"
             />
-          </label>
+          </Field>
 
-          <label className="block">
-            <span className="text-[13px] font-bold text-neutral-600">주최자 이름</span>
-            <input
+          <Field label="주최자">
+            <TextInput
               data-testid="organizer"
-              className={inputCls}
               value={organizer}
               onChange={(e) => setOrganizer(e.target.value)}
               placeholder="예: 도영"
             />
-          </label>
+          </Field>
 
-          <div className="flex gap-2">
-            <label className="block flex-1">
-              <span className="text-[13px] font-bold text-neutral-600">시작 날짜</span>
-              <input
+          <div className="flex gap-3">
+            <Field label="시작일">
+              <TextInput
                 data-testid="date-start"
                 type="date"
-                className={inputCls}
                 value={dateStart}
                 onChange={(e) => setDateStart(e.target.value)}
               />
-            </label>
-            <label className="block flex-1">
-              <span className="text-[13px] font-bold text-neutral-600">끝 날짜</span>
-              <input
+            </Field>
+            <Field label="종료일">
+              <TextInput
                 data-testid="date-end"
                 type="date"
-                className={inputCls}
                 value={dateEnd}
                 onChange={(e) => setDateEnd(e.target.value)}
               />
-            </label>
+            </Field>
           </div>
 
-          <div className="flex gap-2">
-            <label className="block flex-1">
-              <span className="text-[13px] font-bold text-neutral-600">회의 길이</span>
-              <select
+          <div className="flex gap-3">
+            <Field label="소요 시간">
+              <Select
                 data-testid="duration"
-                className={inputCls}
                 value={durationSlots}
                 onChange={(e) => setDurationSlots(Number(e.target.value))}
               >
                 <option value={1}>1시간</option>
                 <option value={2}>2시간</option>
                 <option value={3}>3시간</option>
-              </select>
-            </label>
-            <div className="block flex-1">
-              <span className="text-[13px] font-bold text-neutral-600">응답 마감 (선택)</span>
-              <div className="flex gap-1.5">
-                <input
-                  data-testid="deadline-date"
-                  type="date"
-                  aria-label="마감 날짜"
-                  className={inputCls}
-                  value={deadlineDate}
-                  onChange={(e) => setDeadlineDate(e.target.value)}
-                />
-                <select
+              </Select>
+            </Field>
+            <Field label="응답 마감 (선택)">
+              <TextInput
+                data-testid="deadline-date"
+                type="date"
+                aria-label="마감 날짜"
+                value={deadlineDate}
+                onChange={(e) => setDeadlineDate(e.target.value)}
+              />
+            </Field>
+          </div>
+
+          {deadlineDate && (
+            <motion.div
+              initial={riseIn.initial}
+              animate={riseIn.animate}
+              transition={spring}
+              className="flex gap-3"
+            >
+              <Field label="마감 시">
+                <Select
                   data-testid="deadline-hour"
                   aria-label="마감 시 (24시간제)"
-                  className={inputCls}
                   value={deadlineHour}
                   onChange={(e) => setDeadlineHour(Number(e.target.value))}
                 >
@@ -252,11 +300,12 @@ export function CreateMeetingPage() {
                       {pad2(h)}시
                     </option>
                   ))}
-                </select>
-                <select
+                </Select>
+              </Field>
+              <Field label="마감 분">
+                <Select
                   data-testid="deadline-minute"
                   aria-label="마감 분 (15분 단위)"
-                  className={inputCls}
                   value={deadlineMinute}
                   onChange={(e) => setDeadlineMinute(Number(e.target.value))}
                 >
@@ -265,17 +314,16 @@ export function CreateMeetingPage() {
                       {pad2(m)}분
                     </option>
                   ))}
-                </select>
-              </div>
-            </div>
-          </div>
+                </Select>
+              </Field>
+            </motion.div>
+          )}
 
           <div>
-            <span className="text-[13px] font-bold text-neutral-600">설문 시간 범위</span>
-            <div className="flex items-center gap-2 mt-1">
-              <select
+            <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">시간 범위</span>
+            <div className="flex items-center gap-2">
+              <Select
                 data-testid="hour-start"
-                className={inputCls}
                 value={hourStart}
                 onChange={(e) => setHourStart(Number(e.target.value))}
               >
@@ -284,11 +332,10 @@ export function CreateMeetingPage() {
                     {pad2(h)}:00
                   </option>
                 ))}
-              </select>
-              <span className="text-sm text-neutral-400">~</span>
-              <select
+              </Select>
+              <span className="text-[13px] font-bold text-ink-muted/40">~</span>
+              <Select
                 data-testid="hour-end"
-                className={inputCls}
                 value={hourEnd}
                 onChange={(e) => setHourEnd(Number(e.target.value))}
               >
@@ -297,68 +344,56 @@ export function CreateMeetingPage() {
                     {pad2(h)}:00
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
-            <p className="text-[11.5px] text-neutral-400 mt-1">
-              참여자는 이 범위의 시간만 입력해요. 예: 09:00~18:00
+            <p className="text-[11.5px] text-ink-muted/60 mt-1.5 pl-1">
+              참여자는 이 범위의 시간만 입력해요
             </p>
           </div>
 
           <div>
-            <span className="text-[13px] font-bold text-neutral-600">
-              참여자 — 배지를 눌러 필참↔선택 전환
-            </span>
-            <div className="flex gap-2 mt-1">
-              <input
-                data-testid="new-person"
-                className={inputCls}
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addPerson()}
-                placeholder="이름 입력 후 추가"
-              />
-              <button
-                type="button"
-                data-testid="add-person"
-                onClick={addPerson}
-                className="flex-none rounded-lg border border-neutral-300 bg-white px-4 text-sm font-bold cursor-pointer"
-              >
-                추가
-              </button>
-            </div>
-            <ul className="mt-2 space-y-1.5">
+            <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">참여자</span>
+            <div className="flex flex-wrap gap-2">
               {people.map((p, i) => (
-                <motion.li
+                <motion.span
                   key={p.name}
                   initial={riseIn.initial}
                   animate={riseIn.animate}
                   transition={{ ...spring, delay: i * STAGGER }}
-                  className="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-3 py-2"
+                  className="inline-flex items-center gap-1.5 bg-surface border border-line rounded-field pl-3 pr-2 py-2"
                 >
-                  <span className="flex-1 text-sm font-bold">{p.name}</span>
-                  <button
-                    type="button"
+                  <span className="text-[13px] font-bold">{p.name}</span>
+                  <RoleBadge
+                    role={p.role}
                     data-testid={`draft-role-${p.name}`}
                     onClick={() => toggleRole(i)}
-                    className={`text-[11px] font-bold rounded-md px-2 py-0.5 cursor-pointer ${
-                      p.role === 'required'
-                        ? 'bg-blue-50 text-blue-800'
-                        : 'bg-neutral-100 text-neutral-500'
-                    }`}
-                  >
-                    {p.role === 'required' ? '필참' : '선택'}
-                  </button>
-                  <button
+                  />
+                  <motion.button
                     type="button"
+                    whileTap={{ scale: 0.9 }}
                     onClick={() => removePerson(i)}
                     aria-label={`${p.name} 삭제`}
-                    className="text-neutral-400 text-sm cursor-pointer"
+                    className="w-[15px] h-[15px] rounded-full bg-surface-sub/50 text-ink-muted text-[9px] leading-[15px] text-center cursor-pointer"
                   >
                     ✕
-                  </button>
-                </motion.li>
+                  </motion.button>
+                </motion.span>
               ))}
-            </ul>
+              <input
+                data-testid="new-person"
+                className="min-w-[140px] flex-1 rounded-field border border-dashed border-line bg-transparent px-3 py-2 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addPerson()
+                  }
+                }}
+                onBlur={addPerson}
+                placeholder="+ 참여자 추가"
+              />
+            </div>
           </div>
 
           {error && (
@@ -369,22 +404,17 @@ export function CreateMeetingPage() {
         </Enter>
 
         {/* 주요 CTA — 화면 하단 고정 */}
-        <div className="sticky bottom-0 -mx-3.5 px-3.5 pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
+        <div className="sticky bottom-0 -mx-[22px] px-[22px] pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
           <Button
             data-testid="create-meeting"
             onClick={() => void submit()}
             disabled={saving}
             className="w-full"
           >
-            {saving ? '저장 중…' : '모임 만들고 링크 받기'}
+            {saving ? '만드는 중…' : '모임 생성하기'}
           </Button>
         </div>
 
-        <p className="mt-6 text-xs text-neutral-400 text-center">
-          <Link to="/demo" className="underline">
-            추천 엔진 데모 보기
-          </Link>
-        </p>
         <Footer />
       </div>
     </div>

@@ -86,14 +86,19 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 
 // ---------- 칩/배지 ----------
 
-/** 참여자 역할 배지 — 필참은 파랑, 선택은 회색 */
+/** 참여자 역할 배지 — solid: 칩용(필참 파랑 채움), tint: 리스트용(파랑 10% 배경) */
 export function RoleBadge({
   role,
   onClick,
+  variant = 'solid',
+  ...rest
 }: {
   role: 'required' | 'optional'
   onClick?: () => void
-}) {
+  variant?: 'solid' | 'tint'
+} & HTMLMotionProps<'button'>) {
+  const required =
+    variant === 'solid' ? 'bg-primary text-white' : 'bg-primary/10 text-primary'
   return (
     <motion.button
       type="button"
@@ -101,8 +106,9 @@ export function RoleBadge({
       whileTap={press}
       transition={pressSpring}
       className={`rounded-full px-2 py-0.5 text-[10px] font-black cursor-pointer ${
-        role === 'required' ? 'bg-primary text-white' : 'bg-surface-sub text-ink-muted'
+        role === 'required' ? required : 'bg-surface-sub text-ink-muted'
       }`}
+      {...rest}
     >
       {role === 'required' ? '필참' : '선택'}
     </motion.button>
