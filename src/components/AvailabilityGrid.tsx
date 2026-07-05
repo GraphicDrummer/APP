@@ -61,7 +61,7 @@ export function AvailabilityGrid({
           <GridLegend />
         </div>
         {(onCycleDay || onCycleHour) && (
-          <p className="text-[10px] font-bold text-ink-muted/40 mt-1">헤더 탭 → 행/열 일괄</p>
+          <p className="text-[10px] font-bold text-ink-muted mt-1">헤더 탭 → 행/열 일괄</p>
         )}
       </div>
 
