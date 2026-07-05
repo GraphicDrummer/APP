@@ -6,7 +6,8 @@ import { riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { Button, Enter, Field, RoleBadge, Select, TextInput, cardCls } from '../components/ui'
-import { HourRangePicker } from '../components/HourRangePicker'
+import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
+import { hhmm } from '../lib/slots'
 
 interface DraftPerson {
   name: string
@@ -15,9 +16,8 @@ interface DraftPerson {
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
-// 마감 시각은 시(00~23)·분(00/15/30/45) 드롭다운 2개로 강제 — 24시간제
+// 마감 시각은 시간 범위와 동일한 가로 스크롤 칩 — 정시(00~23)만 선택
 const DEADLINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
-const DEADLINE_MINUTES = [0, 15, 30, 45]
 
 /** 섹션 라벨 — 12px Black, 대문자 자간 (디자인 카드 헤더용) */
 function CardLabel({ children }: { children: React.ReactNode }) {
@@ -38,7 +38,6 @@ export function CreateMeetingPage() {
   const [hourEnd, setHourEnd] = useState(18)
   const [deadlineDate, setDeadlineDate] = useState('')
   const [deadlineHour, setDeadlineHour] = useState(18)
-  const [deadlineMinute, setDeadlineMinute] = useState(0)
   const [people, setPeople] = useState<DraftPerson[]>([])
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
@@ -90,9 +89,7 @@ export function CreateMeetingPage() {
         hourStart,
         hourEnd,
         deadline: deadlineDate
-          ? new Date(
-              `${deadlineDate}T${pad2(deadlineHour)}:${pad2(deadlineMinute)}:00`,
-            ).toISOString()
+          ? new Date(`${deadlineDate}T${pad2(deadlineHour)}:00:00`).toISOString()
           : undefined,
       })
       for (const p of people) {
@@ -285,37 +282,16 @@ export function CreateMeetingPage() {
           {deadlineDate && (
             <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring}>
               <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
-                마감 시각 (15분 단위)
+                마감 시각
               </span>
-              <div className="flex items-center gap-2">
-                <Select
-                  data-testid="deadline-hour"
-                  aria-label="마감 시 (24시간제)"
-                  value={deadlineHour}
-                  onChange={(e) => setDeadlineHour(Number(e.target.value))}
-                >
-                  {DEADLINE_HOURS.map((h) => (
-                    <option key={h} value={h}>
-                      {pad2(h)}
-                    </option>
-                  ))}
-                </Select>
-                <span className="text-[15px] font-black text-ink-muted/60">:</span>
-                <Select
-                  data-testid="deadline-minute"
-                  aria-label="마감 분 (15분 단위)"
-                  value={deadlineMinute}
-                  onChange={(e) => setDeadlineMinute(Number(e.target.value))}
-                >
-                  {DEADLINE_MINUTES.map((m) => (
-                    <option key={m} value={m}>
-                      {pad2(m)}
-                    </option>
-                  ))}
-                </Select>
-              </div>
+              <ChipRow
+                testId="deadline-hour"
+                options={DEADLINE_HOURS}
+                value={deadlineHour}
+                onChange={setDeadlineHour}
+              />
               <p className="pl-1 pt-1.5 text-[11.5px] font-bold text-ink-muted/60">
-                마감: {deadlineDate} {pad2(deadlineHour)}:{pad2(deadlineMinute)}
+                마감: {deadlineDate} {hhmm(deadlineHour)}
               </p>
             </motion.div>
           )}

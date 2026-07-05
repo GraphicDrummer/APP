@@ -6,14 +6,16 @@ import { motion } from 'motion/react'
 import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
 
-function ChipRow({
+/** 가로 스크롤 시간 칩 한 줄 — 시간 범위·마감 시각 등에서 공유하는 단일 인터랙션 */
+export function ChipRow({
   label,
   options,
   value,
   onChange,
   testId,
 }: {
-  label: string
+  /** 생략하면 라벨 없이 칩만 표시 */
+  label?: string
   options: number[]
   value: number
   onChange: (v: number) => void
@@ -32,7 +34,9 @@ function ChipRow({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="flex-none w-8 text-[11px] font-black text-ink-muted/60">{label}</span>
+      {label && (
+        <span className="flex-none w-8 text-[11px] font-black text-ink-muted/60">{label}</span>
+      )}
       <div
         ref={scroller}
         data-testid={testId}
