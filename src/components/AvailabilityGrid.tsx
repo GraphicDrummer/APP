@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { DAYS, HOURS, key, type CellState, type Person } from '../engine'
+import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
 
 type DisplayState = CellState | 'free'
@@ -17,16 +18,26 @@ interface Props {
   cascadeDay?: number | null
 }
 
-const CELL_STYLE: Record<string, string> = {
-  free: 'bg-neutral-50 border-neutral-200 text-transparent',
-  soft: 'bg-soft-bg border-soft text-soft-ink',
-  blocked: 'bg-blocked border-blocked text-white',
+// 칸은 상태와 무관하게 크기 완전 고정 — 텍스트 없이 색으로만 구분한다
+const CELL_STYLE: Record<DisplayState, string> = {
+  free: 'bg-white border-line',
+  soft: 'bg-soft-bg border-soft',
+  blocked: 'bg-blocked border-blocked',
 }
 
-const CELL_LABEL: Record<string, string> = { free: '', soft: '별로', blocked: '불가' }
+const STATE_LABEL: Record<DisplayState, string> = { free: '가능', soft: '별로', blocked: '불가' }
 
-const headerBtnCls =
-  'w-full rounded-md border border-neutral-200 bg-neutral-50 py-0.5 cursor-pointer'
+/** 열/행이 한 가지 상태로 통일돼 있으면 그 상태, 아니면 null */
+function uniformState(states: DisplayState[]): DisplayState | null {
+  return states.every((s) => s === states[0]) ? states[0] : null
+}
+
+// 헤더 버튼 — 열 전체가 같은 상태면 그 상태의 색을 입어 인과를 보여준다
+const HEADER_STYLE: Record<string, string> = {
+  free: 'bg-surface-sub text-ink',
+  soft: 'bg-soft-bg border border-soft text-soft-ink',
+  blocked: 'bg-blocked text-white',
+}
 
 // 요일×시간 그리드 — 칸을 누르면 가능 → 별로 → 불가 순으로 순환
 export function AvailabilityGrid({
@@ -37,65 +48,78 @@ export function AvailabilityGrid({
   onCycleHour,
   cascadeDay = null,
 }: Props) {
+  const cellState = (d: number, h: number): DisplayState => person.cells[key(d, h)] ?? 'free'
+
   return (
-    <div className="bg-white border border-neutral-200 rounded-xl p-3">
-      <p className="text-sm font-bold mb-2">
-        <b className="text-blue-600">{person.id}</b>의 다음 주 — 칸을 눌러 가능 → 별로 → 불가 순으로
-        바꿔요
-      </p>
-      <table className="w-full border-separate border-spacing-[3px]">
+    <div>
+      <div className="flex items-center justify-between mb-3 px-0.5">
+        <h3 className="text-[15px] font-black tracking-[-0.4px]">
+          <span className="text-primary">{person.id}</span>님의 시간
+        </h3>
+        {(onCycleDay || onCycleHour) && (
+          <p className="text-[10px] font-bold text-ink-muted/40">헤더 탭 → 행/열 일괄</p>
+        )}
+      </div>
+
+      <table className="w-full table-fixed border-separate border-spacing-[4px]">
         <thead>
           <tr>
-            <th />
-            {DAYS.map((d, i) => (
-              <th key={d} className="text-[11px] font-bold text-neutral-500 pb-0.5">
-                {onCycleDay ? (
-                  <motion.button
-                    type="button"
-                    data-testid={`day-${i}`}
-                    aria-label={`${d}요일 전체 순환`}
-                    onClick={() => onCycleDay(i)}
-                    whileTap={press}
-                    transition={pressSpring}
-                    className={headerBtnCls}
-                  >
-                    {d}
-                  </motion.button>
-                ) : (
-                  d
-                )}
-              </th>
-            ))}
+            <th className="w-11" />
+            {DAYS.map((d, i) => {
+              const colState = uniformState(hours.map((h) => cellState(i, h)))
+              const style = HEADER_STYLE[colState ?? 'free']
+              return (
+                <th key={d}>
+                  {onCycleDay ? (
+                    <motion.button
+                      type="button"
+                      data-testid={`day-${i}`}
+                      aria-label={`${d}요일 전체 순환`}
+                      onClick={() => onCycleDay(i)}
+                      whileTap={press}
+                      transition={pressSpring}
+                      className={`w-full h-[30px] rounded-[13px] text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
+                    >
+                      {d}
+                    </motion.button>
+                  ) : (
+                    <span className="block text-[11px] font-black text-ink-muted">{d}</span>
+                  )}
+                </th>
+              )
+            })}
           </tr>
         </thead>
         <tbody>
           {hours.map((h, row) => (
             <tr key={h}>
-              <td className="text-[10.5px] text-right pr-1 whitespace-nowrap w-9 text-neutral-500">
+              <td>
                 {onCycleHour ? (
                   <motion.button
                     type="button"
                     data-testid={`hour-${h}`}
-                    aria-label={`${h}시 전체 순환`}
+                    aria-label={`${hhmm(h)} 전체 순환`}
                     onClick={() => onCycleHour(h)}
                     whileTap={press}
                     transition={pressSpring}
-                    className={headerBtnCls}
+                    className="w-full text-[10px] font-black text-ink-muted cursor-pointer"
                   >
-                    {h}:00
+                    {hhmm(h)}
                   </motion.button>
                 ) : (
-                  `${h}:00`
+                  <span className="block text-center text-[10px] font-black text-ink-muted">
+                    {hhmm(h)}
+                  </span>
                 )}
               </td>
               {DAYS.map((_, d) => {
-                const s: DisplayState = person.cells[key(d, h)] ?? 'free'
+                const s = cellState(d, h)
                 return (
                   <td key={d}>
                     <motion.button
                       type="button"
                       data-testid={`cell-${d}-${h}`}
-                      aria-label={`${DAYS[d]} ${h}시 ${s === 'free' ? '가능' : CELL_LABEL[s]}`}
+                      aria-label={`${DAYS[d]} ${hhmm(h)} ${STATE_LABEL[s]}`}
                       onClick={() => onCycleCell(d, h)}
                       whileTap={press}
                       transition={pressSpring}
@@ -103,10 +127,8 @@ export function AvailabilityGrid({
                         // 요일 일괄 변경: 위에서부터 칸당 20ms 순차 전환
                         transitionDelay: cascadeDay === d ? `${row * 20}ms` : '0ms',
                       }}
-                      className={`w-full h-[30px] rounded-md border text-[10px] font-bold cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[s]}`}
-                    >
-                      {CELL_LABEL[s]}
-                    </motion.button>
+                      className={`block w-full h-[41px] rounded-[17px] border-2 cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[s]}`}
+                    />
                   </td>
                 )
               })}
@@ -114,20 +136,25 @@ export function AvailabilityGrid({
           ))}
         </tbody>
       </table>
-      <div className="flex gap-3 mt-2.5 text-[11.5px] text-neutral-500">
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded border border-neutral-200 bg-neutral-50" />
-          가능
+    </div>
+  )
+}
+
+/** 우측 상단 색 범례 — 가능/별로/불가 */
+export function GridLegend() {
+  const items: { label: string; cls: string }[] = [
+    { label: '가능', cls: 'bg-white border border-line' },
+    { label: '별로', cls: 'bg-soft-bg border border-soft' },
+    { label: '불가', cls: 'bg-blocked' },
+  ]
+  return (
+    <div className="flex items-center gap-2.5">
+      {items.map(({ label, cls }) => (
+        <span key={label} className="flex items-center gap-1">
+          <span className={`w-[11px] h-[11px] rounded-[4px] ${cls}`} />
+          <span className="text-[10px] text-ink-muted/50">{label}</span>
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded border border-soft bg-soft-bg" />
-          별로 (되지만 피하고 싶음)
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded border border-blocked bg-blocked" />
-          불가
-        </span>
-      </div>
+      ))}
     </div>
   )
 }

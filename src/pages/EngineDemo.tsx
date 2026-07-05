@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { key, recommend, type CellState, type Person } from '../engine'
 import { presetBase, presetVariant } from '../presets'
+import { mondayOf, slotToIso } from '../lib/slots'
 import { AvailabilityGrid } from '../components/AvailabilityGrid'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
@@ -83,8 +84,13 @@ export function EngineDemo() {
 
         <RecommendationCard
           result={result}
-          confirmed={confirmed}
-          onConfirm={(k) => setConfirmed((cur) => (cur === k ? null : k))}
+          confirmedSlot={(() => {
+            if (!confirmed) return null
+            const [d, h] = confirmed.split('-').map(Number)
+            return slotToIso(mondayOf(new Date().toISOString().slice(0, 10)), d, h)
+          })()}
+          onConfirm={(k) => setConfirmed(k)}
+          onUnconfirm={() => setConfirmed(null)}
         />
 
         <p className="text-[13px] font-bold text-neutral-500 mt-5 mb-2 px-1">

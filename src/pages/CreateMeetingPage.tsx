@@ -6,6 +6,7 @@ import { riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { Button, Enter, Field, RoleBadge, Select, TextInput, cardCls } from '../components/ui'
+import { HourRangePicker } from '../components/HourRangePicker'
 
 interface DraftPerson {
   name: string
@@ -282,13 +283,11 @@ export function CreateMeetingPage() {
           </div>
 
           {deadlineDate && (
-            <motion.div
-              initial={riseIn.initial}
-              animate={riseIn.animate}
-              transition={spring}
-              className="flex gap-3"
-            >
-              <Field label="마감 시">
+            <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring}>
+              <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
+                마감 시각 (15분 단위)
+              </span>
+              <div className="flex items-center gap-2">
                 <Select
                   data-testid="deadline-hour"
                   aria-label="마감 시 (24시간제)"
@@ -297,12 +296,11 @@ export function CreateMeetingPage() {
                 >
                   {DEADLINE_HOURS.map((h) => (
                     <option key={h} value={h}>
-                      {pad2(h)}시
+                      {pad2(h)}
                     </option>
                   ))}
                 </Select>
-              </Field>
-              <Field label="마감 분">
+                <span className="text-[15px] font-black text-ink-muted/60">:</span>
                 <Select
                   data-testid="deadline-minute"
                   aria-label="마감 분 (15분 단위)"
@@ -311,44 +309,27 @@ export function CreateMeetingPage() {
                 >
                   {DEADLINE_MINUTES.map((m) => (
                     <option key={m} value={m}>
-                      {pad2(m)}분
+                      {pad2(m)}
                     </option>
                   ))}
                 </Select>
-              </Field>
+              </div>
+              <p className="pl-1 pt-1.5 text-[11.5px] font-bold text-ink-muted/60">
+                마감: {deadlineDate} {pad2(deadlineHour)}:{pad2(deadlineMinute)}
+              </p>
             </motion.div>
           )}
 
           <div>
             <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">시간 범위</span>
-            <div className="flex items-center gap-2">
-              <Select
-                data-testid="hour-start"
-                value={hourStart}
-                onChange={(e) => setHourStart(Number(e.target.value))}
-              >
-                {Array.from({ length: 24 }, (_, h) => (
-                  <option key={h} value={h}>
-                    {pad2(h)}:00
-                  </option>
-                ))}
-              </Select>
-              <span className="text-[13px] font-bold text-ink-muted/40">~</span>
-              <Select
-                data-testid="hour-end"
-                value={hourEnd}
-                onChange={(e) => setHourEnd(Number(e.target.value))}
-              >
-                {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
-                  <option key={h} value={h}>
-                    {pad2(h)}:00
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <p className="text-[11.5px] text-ink-muted/60 mt-1.5 pl-1">
-              참여자는 이 범위의 시간만 입력해요
-            </p>
+            <HourRangePicker
+              start={hourStart}
+              end={hourEnd}
+              onChange={(s, e) => {
+                setHourStart(s)
+                setHourEnd(e)
+              }}
+            />
           </div>
 
           <div>

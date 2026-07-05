@@ -20,9 +20,9 @@
   /* 브랜드/상태 */
   --color-primary: #3182f6; /* 메인 파랑 */
   --color-confirm: #27b25b; /* 확정 초록 */
-  --color-soft: #ffd745; /* 별로 — 노랑 (테두리/강조) */
+  --color-soft: #ffd230; /* 별로 — 노랑 (테두리/강조) */
   --color-soft-bg: #fff4dc; /* 별로 — 칸 채움 */
-  --color-soft-ink: #946800; /* 별로 — 텍스트 */
+  --color-soft-ink: #bb4d00; /* 별로 — 텍스트 */
   --color-blocked: #1a2028; /* 불가 — 어두운 남색 */
   --color-danger: #e5484d; /* 실패/에러 빨강 */
 

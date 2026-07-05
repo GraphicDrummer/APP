@@ -1,17 +1,24 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { DAYS, key, type RecommendResult, type WindowEval } from '../engine'
+import { hhmm } from '../lib/slots'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 
 interface Props {
   result: RecommendResult
-  confirmed: string | null
+  /** 확정된 시간(ISO). 있으면 초록 '확정됨' 카드를 보여준다 */
+  confirmedSlot?: string | null
   onConfirm: (windowKey: string) => void
+  onUnconfirm?: () => void
 }
 
-const fmt = (w: WindowEval) => `${DAYS[w.d]}요일 ${w.h}:00`
+const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
 
 /** 스태거 등장 블록 — 위에서부터 40ms 간격 */
-function Rise({ index, children, ...rest }: { index: number; children: React.ReactNode } & Record<string, unknown>) {
+function Rise({
+  index,
+  children,
+  ...rest
+}: { index: number; children: React.ReactNode } & Record<string, unknown>) {
   return (
     <motion.div
       initial={riseIn.initial}
@@ -24,71 +31,108 @@ function Rise({ index, children, ...rest }: { index: number; children: React.Rea
   )
 }
 
-// 추천 카드 — 완벽한 슬롯이 있으면 단호한 추천 하나, 없으면 완화 사다리 + 병목.
-// 성공↔실패 상태 전환은 크로스페이드 + 높이 스프링(layout)으로 보여준다.
-export function RecommendationCard({ result: R, confirmed, onConfirm }: Props) {
+/** 파랑(추천)/초록(확정) 공통 히어로 카드 레이아웃 */
+function HeroCard({
+  tone,
+  label,
+  day,
+  time,
+  chips,
+  buttonText,
+  buttonTestId,
+  onButton,
+}: {
+  tone: 'primary' | 'confirm'
+  label: string
+  day: string
+  time: string
+  chips: string[]
+  buttonText: string
+  buttonTestId: string
+  onButton: () => void
+}) {
+  return (
+    <div className={`rounded-field p-[22px] ${tone === 'primary' ? 'bg-primary' : 'bg-confirm'}`}>
+      <p className="text-[11px] font-black tracking-[1.65px] uppercase text-white/70">{label}</p>
+      <p className="text-[13px] font-bold text-white/75 mt-4">{day}</p>
+      <p data-testid="rec-slot" className="text-[45px] font-black tracking-[-2.2px] leading-none text-white mt-0.5">
+        {time}
+      </p>
+      <div className="flex flex-wrap gap-2 mt-4">
+        {chips.map((c, i) => (
+          <span
+            key={c}
+            className={`rounded-full px-3 py-1 text-[11px] font-bold text-white ${
+              i === 0 ? 'bg-white/20' : 'bg-white/15'
+            }`}
+          >
+            {c}
+          </span>
+        ))}
+      </div>
+      <motion.button
+        type="button"
+        data-testid={buttonTestId}
+        onClick={onButton}
+        whileTap={press}
+        transition={pressSpring}
+        className={`mt-5 w-full h-[45px] rounded-[17px] bg-white text-[13px] font-black cursor-pointer ${
+          tone === 'primary' ? 'text-primary' : 'text-confirm'
+        }`}
+      >
+        {buttonText}
+      </motion.button>
+    </div>
+  )
+}
+
+// 추천 카드 — 완벽한 슬롯이 있으면 파란 추천, 확정되면 초록, 없으면 차선책(NO PERFECT TIME).
+// 상태 전환은 크로스페이드 + 높이 스프링(layout)으로 보여준다.
+export function RecommendationCard({ result: R, confirmedSlot, onConfirm, onUnconfirm }: Props) {
+  const total = R.reqCount + R.optCount
   const isPerfect = R.perfect.length > 0
+  const state = confirmedSlot ? 'confirmed' : isPerfect ? 'perfect' : 'ladder'
+
+  // 차선책 옵션: ① 별로 허용(l1) → ② 일부 제외(l2)
+  const options: { label: string; w: WindowEval; cost: string }[] = []
+  if (R.l1) options.push({ label: '별로인 시간 포함', w: R.l1, cost: `${R.l1.softNames.join(', ')} 양보` })
+  for (const w of R.l2.slice(0, 2 - options.length)) {
+    options.push({ label: '일부 제외', w, cost: `${w.missingOpt.join(', ')} 제외` })
+  }
+
+  const confirmedDate = confirmedSlot ? new Date(confirmedSlot) : null
 
   return (
-    <motion.div
-      layout
-      transition={spring}
-      data-testid="rec-card"
-      aria-live="polite"
-      className={`overflow-hidden bg-white rounded-2xl border p-4 ${
-        isPerfect ? 'border-primary shadow-lg shadow-primary/10' : 'border-neutral-200'
-      }`}
-    >
+    <motion.div layout transition={spring} data-testid="rec-card" aria-live="polite" className="overflow-hidden rounded-field">
       <AnimatePresence mode="popLayout" initial={false}>
-        {isPerfect ? (
-          <motion.div
-            key="perfect"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-          >
-            {(() => {
-              const w = R.perfect[0]
-              const wKey = key(w.d, w.h)
-              const done = confirmed === wKey
-              return (
-                <>
-                  <p className="text-xs font-bold tracking-wide text-primary">이 시간을 추천해요</p>
-                  <p data-testid="rec-slot" className="text-[28px] font-extrabold leading-tight my-1">
-                    {fmt(w)}
-                  </p>
-                  <p className="text-[13.5px] text-neutral-500">
-                    필참 {w.reqAvail}/{R.reqCount} · 선택 {w.optAvail}/{R.optCount} 전원 가능 ·
-                    피하고 싶은 시간에 안 걸림
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 mt-2.5 text-xs font-semibold">
-                    <span className="rounded-full bg-blue-50 text-blue-800 px-2 py-0.5">전원 참석</span>
-                    {R.perfect.length > 1 ? (
-                      <span className="rounded-full bg-blue-50 text-blue-800 px-2 py-0.5">
-                        대안 {R.perfect.length - 1}개 더 있음
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-soft-bg text-soft-ink px-2 py-0.5">
-                        이 시간뿐이에요 — 취약
-                      </span>
-                    )}
-                  </div>
-                  <motion.button
-                    type="button"
-                    data-testid="confirm-btn"
-                    onClick={() => onConfirm(wKey)}
-                    whileTap={press}
-                    transition={pressSpring}
-                    className={`mt-3.5 w-full rounded-xl py-3 text-[15px] font-bold text-white cursor-pointer ${
-                      done ? 'bg-confirm' : 'bg-primary active:bg-blue-800'
-                    }`}
-                  >
-                    {done ? '✓ 확정됨' : '이 시간으로 확정'}
-                  </motion.button>
-                </>
-              )
-            })()}
+        {state === 'confirmed' && confirmedDate ? (
+          <motion.div key="confirmed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+            <HeroCard
+              tone="confirm"
+              label="확정됨"
+              day={`${WEEKDAYS_KO[confirmedDate.getDay()]}요일`}
+              time={hhmm(confirmedDate.getHours())}
+              chips={[`전원 참석 ${total}명`, '캘린더는 확정 탭에서']}
+              buttonText="확정 취소하기"
+              buttonTestId="unconfirm"
+              onButton={() => onUnconfirm?.()}
+            />
+          </motion.div>
+        ) : state === 'perfect' ? (
+          <motion.div key="perfect" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+            <HeroCard
+              tone="primary"
+              label="추천 시간"
+              day={`${DAYS[R.perfect[0].d]}요일`}
+              time={hhmm(R.perfect[0].h)}
+              chips={[
+                `전원 참석 ${total}명`,
+                R.perfect.length > 1 ? `대안 ${R.perfect.length - 1}개` : '이 시간뿐이에요',
+              ]}
+              buttonText="이 시간으로 확정하기"
+              buttonTestId="confirm-btn"
+              onButton={() => onConfirm(key(R.perfect[0].d, R.perfect[0].h))}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -97,59 +141,53 @@ export function RecommendationCard({ result: R, confirmed, onConfirm }: Props) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
+            className="bg-white border border-line rounded-field p-5"
           >
-            <p className="text-xs font-bold tracking-wide text-danger">
-              전원이 깔끔하게 되는 시간이 없어요
+            <div className="flex items-center gap-2">
+              <span className="w-[27px] h-[27px] rounded-full bg-danger/10 text-danger text-[13px] font-black flex items-center justify-center">
+                ⊘
+              </span>
+              <p className="text-[11px] font-black tracking-[2.2px] uppercase text-danger">
+                NO PERFECT TIME
+              </p>
+            </div>
+            <p className="text-[13px] font-bold text-ink-muted mt-3.5 leading-[1.6]">
+              모두가 가능한 시간이 없네요.
+              <br />
+              <span className="text-ink">차선책을 제안해드려요:</span>
             </p>
-            <p className="text-[13.5px] text-neutral-500 mt-1">
-              그래도 멈추지 않아요. 무엇을 양보하면 무엇을 얻는지 보여드릴게요.
-            </p>
-            <div className="mt-3.5 flex flex-col gap-2">
-              {R.l1 && (
+            <div className="mt-4 flex flex-col gap-2.5">
+              {options.map(({ label, w, cost }, i) => (
                 <Rise
-                  index={0}
-                  data-testid="ladder-soft"
-                  className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5"
+                  key={key(w.d, w.h)}
+                  index={i}
+                  data-testid={i === 0 && R.l1 ? 'ladder-soft' : 'ladder-drop'}
+                  className="bg-surface-sub/50 border border-line/50 rounded-field p-4"
                 >
-                  <p className="text-xs font-bold text-neutral-500">
-                    ① {R.l1.softNames.join(', ')}의 ‘별로’ 시간을 허용하면
+                  <p className="text-[10px] font-black tracking-[0.5px] uppercase text-ink-muted">
+                    OPTION {i + 1}. {label}
                   </p>
-                  <p className="text-[15px] font-bold mt-px">
-                    → {fmt(R.l1)}{' '}
-                    <span className="font-semibold text-neutral-500">
-                      (전원 {R.reqCount + R.optCount}명)
-                    </span>
+                  <p className="mt-1.5">
+                    <span className="text-[17px] font-black">
+                      {DAYS[w.d]}요일 {hhmm(w.h)}
+                    </span>{' '}
+                    <span className="text-[11px] font-bold text-ink-muted">({cost})</span>
                   </p>
-                  <p className="text-xs text-soft-ink mt-0.5">
-                    비용: {R.l1.softNames.join(', ')} — 피하고 싶은 시간이에요
+                </Rise>
+              ))}
+              {R.bottleneck && (
+                <Rise
+                  index={options.length}
+                  data-testid="bottleneck"
+                  className="bg-soft-bg/50 border border-[#fee685] rounded-field p-4"
+                >
+                  <p className="text-[11px] font-bold text-[#8a5a00] leading-[1.6]">
+                    💡 <b className="font-black">{R.bottleneck}</b>님만 시간을 내주시면 가능한
+                    시간이 <b className="font-black">{R.bestGain}</b>개 더 생겨요!
                   </p>
                 </Rise>
               )}
-              {R.l2.map((w, i) => (
-                <Rise
-                  key={key(w.d, w.h)}
-                  index={(R.l1 ? 1 : 0) + i}
-                  data-testid="ladder-drop"
-                  className="rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5"
-                >
-                  <p className="text-xs font-bold text-neutral-500">
-                    {R.l1 ? '②' : '①'} 선택 인원 {w.missingOpt.length}명을 제외하면
-                  </p>
-                  <p className="text-[15px] font-bold mt-px">→ {fmt(w)}</p>
-                  <p className="text-xs text-soft-ink mt-0.5">비용: {w.missingOpt.join(', ')} 불참</p>
-                </Rise>
-              ))}
             </div>
-            {R.bottleneck && (
-              <Rise
-                index={(R.l1 ? 1 : 0) + R.l2.length}
-                data-testid="bottleneck"
-                className="mt-3 rounded-lg bg-soft-bg text-soft-ink text-[13px] font-semibold px-3 py-2.5"
-              >
-                지금 막고 있는 건 <b>{R.bottleneck}</b>의 일정이에요. 이것만 풀리면 가능한 시간이{' '}
-                {R.bestGain}개 늘어나요.
-              </Rise>
-            )}
           </motion.div>
         )}
       </AnimatePresence>

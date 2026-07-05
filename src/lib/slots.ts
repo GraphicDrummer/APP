@@ -2,6 +2,9 @@
 // 그리드는 월~금 고정이므로, 모임 date_range 시작일이 속한 주의 월요일을 기준일로 삼는다.
 // (주 단위 반복이나 임의 날짜 범위는 아직 미지원 — 데이터 흐름 확인용 단순화)
 
+/** 앱 전체 시간 표기 — 콜론 + 24시간제. 예: hhmm(9) === '09:00' */
+export const hhmm = (h: number) => `${String(h).padStart(2, '0')}:00`
+
 /** 'YYYY-MM-DD'가 속한 주의 월요일 (로컬 자정) */
 export function mondayOf(dateStr: string): Date {
   const d = new Date(`${dateStr}T00:00:00`)

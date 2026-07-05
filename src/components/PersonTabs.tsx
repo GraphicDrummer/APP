@@ -9,44 +9,53 @@ interface Props {
   onToggleRole: (index: number) => void
 }
 
-// 참여자 칩 — 이름을 누르면 선택, 배지를 누르면 필참↔선택 전환
+// 참여자 칩 — 이름을 누르면 선택(다크 반전), 배지를 누르면 필참↔선택 전환
 export function PersonTabs({ people, selected, onSelect, onToggleRole }: Props) {
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1">
-      {people.map((p, i) => (
-        <motion.div
-          key={p.id}
-          initial={riseIn.initial}
-          animate={riseIn.animate}
-          transition={{ ...spring, delay: i * STAGGER }}
-          className={`flex-none min-w-[58px] text-center rounded-xl border bg-white px-2.5 py-1.5 ${
-            i === selected ? 'border-neutral-900' : 'border-neutral-200'
-          }`}
-        >
-          <motion.button
-            type="button"
-            data-testid={`person-${p.id}`}
-            onClick={() => onSelect(i)}
-            whileTap={press}
-            transition={pressSpring}
-            className="block w-full text-sm font-extrabold cursor-pointer"
-          >
-            {p.id}
-          </motion.button>
-          <motion.button
-            type="button"
-            data-testid={`role-${p.id}`}
-            onClick={() => onToggleRole(i)}
-            whileTap={press}
-            transition={pressSpring}
-            className={`mt-0.5 text-[10.5px] font-bold rounded-md px-1.5 py-px cursor-pointer ${
-              p.role === 'required' ? 'bg-blue-50 text-blue-800' : 'bg-neutral-100 text-neutral-500'
+    <div className="flex gap-2 overflow-x-auto pb-2 -mx-[22px] px-[22px]">
+      {people.map((p, i) => {
+        const active = i === selected
+        return (
+          <motion.div
+            key={p.id}
+            initial={riseIn.initial}
+            animate={riseIn.animate}
+            transition={{ ...spring, delay: i * STAGGER }}
+            className={`flex-none flex items-center gap-1.5 rounded-field border pl-3 pr-2 py-2.5 transition-colors duration-[120ms] motion-reduce:transition-none ${
+              active ? 'bg-ink border-ink' : 'bg-white border-line'
             }`}
           >
-            {p.role === 'required' ? '필참' : '선택'}
-          </motion.button>
-        </motion.div>
-      ))}
+            <motion.button
+              type="button"
+              data-testid={`person-${p.id}`}
+              onClick={() => onSelect(i)}
+              whileTap={press}
+              transition={pressSpring}
+              className={`text-[13px] font-black cursor-pointer whitespace-nowrap ${
+                active ? 'text-white' : 'text-ink'
+              }`}
+            >
+              {p.id}
+            </motion.button>
+            <motion.button
+              type="button"
+              data-testid={`role-${p.id}`}
+              onClick={() => onToggleRole(i)}
+              whileTap={press}
+              transition={pressSpring}
+              className={`rounded-full px-1.5 py-0.5 text-[9px] font-black cursor-pointer whitespace-nowrap ${
+                active
+                  ? 'bg-white/20 text-white'
+                  : p.role === 'required'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-surface-sub text-ink-muted'
+              }`}
+            >
+              {p.role === 'required' ? '필참' : '선택'}
+            </motion.button>
+          </motion.div>
+        )
+      })}
     </div>
   )
 }

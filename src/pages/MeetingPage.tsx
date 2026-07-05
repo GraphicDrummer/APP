@@ -13,7 +13,7 @@ import {
   type ParticipantRow,
   type SlotState,
 } from '../lib/db'
-import { isoToSlot, mondayOf, slotToIso } from '../lib/slots'
+import { hhmm, isoToSlot, mondayOf, slotToIso } from '../lib/slots'
 import { downloadIcs, googleCalendarUrl } from '../lib/calendar'
 import { downloadResultPng } from '../lib/resultImage'
 import { StepTabs } from '../components/StepTabs'
@@ -21,7 +21,7 @@ import { Footer } from '../components/Footer'
 import { motion } from 'motion/react'
 import { spring } from '../lib/motion'
 import { Button, Enter } from '../components/ui'
-import { AvailabilityGrid } from '../components/AvailabilityGrid'
+import { AvailabilityGrid, GridLegend } from '../components/AvailabilityGrid'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
 
@@ -54,6 +54,8 @@ export function MeetingPage() {
   const [copied, setCopied] = useState(false)
   // 요일 일괄 변경 시 해당 열을 위→아래 순차 전환시키기 위한 마커
   const [cascadeDay, setCascadeDay] = useState<number | null>(null)
+  // 조율↔확정 화면 전환. null이면 확정 여부에 따라 자동 결정
+  const [view, setView] = useState<'adjust' | 'done' | null>(null)
 
   const monday = useMemo(
     () => (meeting ? mondayOf(parseDateRange(meeting.date_range).start) : null),
@@ -173,7 +175,7 @@ export function MeetingPage() {
     setSaveState('idle')
   }
 
-  // 추천 카드에서 확정 — meetings.confirmed_slot에 저장하면 완결 화면으로 전환
+  // 추천 카드에서 확정 — meetings.confirmed_slot에 저장. 조율 화면에 남아 초록 카드로 전환된다.
   const confirmSlot = async (windowKey: string) => {
     if (!meeting || !monday) return
     try {
@@ -182,6 +184,7 @@ export function MeetingPage() {
         confirmed_slot: slotToIso(monday, d, h),
       })
       setMeeting(updated)
+      setView('adjust')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
@@ -192,6 +195,7 @@ export function MeetingPage() {
     try {
       const updated = await updateMeeting(meeting.id, { confirmed_slot: null })
       setMeeting(updated)
+      setView('adjust')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
@@ -244,8 +248,9 @@ export function MeetingPage() {
     )
   }
 
-  // 확정 완료 — 완결 화면
-  if (meeting?.confirmed_slot) {
+  // 확정 완료 — 완결 화면 (확정 탭). 조율 탭에서 다시 볼 수 있다.
+  const effectiveView = view ?? (meeting?.confirmed_slot ? 'done' : 'adjust')
+  if (effectiveView === 'done' && meeting?.confirmed_slot) {
     const timeText = fmtConfirmed(meeting.confirmed_slot)
     const ev = {
       title: meeting.title,
@@ -263,7 +268,11 @@ export function MeetingPage() {
     return (
       <div className="min-h-screen bg-app text-ink">
         <div className="max-w-[430px] mx-auto">
-          <StepTabs current={2} />
+          <StepTabs
+            current={2}
+            clickable={[false, true, false]}
+            onStepClick={() => setView('adjust')}
+          />
         </div>
         <div className="max-w-[430px] mx-auto px-3.5 pt-8 pb-4 text-center">
           <Enter>
@@ -336,24 +345,32 @@ export function MeetingPage() {
   return (
     <div className="min-h-screen bg-app text-ink">
       <div className="max-w-[430px] mx-auto">
-        <StepTabs current={1} />
+        <StepTabs
+          current={1}
+          clickable={[false, false, !!meeting?.confirmed_slot]}
+          onStepClick={() => setView('done')}
+        />
       </div>
-      <div className="max-w-[430px] mx-auto px-3.5 pt-2 pb-4">
+      <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
         {/* 헤드라인 먼저 → 본문 순 진입 */}
         <Enter>
-          <header className="mb-4 px-0.5">
-            <p className="text-xs font-semibold tracking-widest text-neutral-400 uppercase">
-              {meeting?.organizer_name} 님의 모임
-            </p>
-            <h1 data-testid="meeting-title" className="text-[22px] font-extrabold">
-              {meeting?.title}
-            </h1>
-            <p className="text-[13px] text-neutral-500">
-              {range?.start} ~ {range?.end} · {meeting?.hour_start}:00~{meeting?.hour_end}:00 ·{' '}
-              {meeting?.duration_slots}시간
-              {meeting?.deadline &&
-                ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
-            </p>
+          <header className="mb-4 px-0.5 flex items-end justify-between gap-3">
+            <div>
+              <h1 data-testid="meeting-title" className="text-[22.5px] font-black tracking-[-1.1px]">
+                {meeting?.title}
+              </h1>
+              <p className="text-[11.5px] text-ink-muted mt-1">
+                {range?.start} ~ {range?.end} ·{' '}
+                {meeting ? `${hhmm(meeting.hour_start)}~${hhmm(meeting.hour_end)}` : ''} ·{' '}
+                {meeting?.duration_slots}시간
+                {meeting?.deadline &&
+                  ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
+              </p>
+            </div>
+            {/* 우측 상단 색 범례 */}
+            <div className="flex-none pb-0.5">
+              <GridLegend />
+            </div>
           </header>
         </Enter>
 
@@ -361,12 +378,13 @@ export function MeetingPage() {
           {result && (
             <RecommendationCard
               result={result}
-              confirmed={null}
+              confirmedSlot={meeting?.confirmed_slot}
               onConfirm={(k) => void confirmSlot(k)}
+              onUnconfirm={() => void unconfirm()}
             />
           )}
 
-          <p className="text-[13px] font-bold text-neutral-500 mt-5 mb-2 px-1">
+          <p className="text-[13px] font-bold text-ink-muted mt-6 mb-2.5 px-0.5">
             내 이름을 누르고, 안 되는 시간을 표시한 뒤 저장하세요
           </p>
           <PersonTabs
@@ -400,9 +418,8 @@ export function MeetingPage() {
         </Enter>
 
         {/* 주요 CTA — 화면 하단 고정 */}
-        <div className="sticky bottom-0 -mx-3.5 px-3.5 pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
+        <div className="sticky bottom-0 -mx-[22px] px-[22px] pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
           <Button
-            variant="dark"
             data-testid="save-availability"
             onClick={() => void save()}
             disabled={saveState === 'saving'}
@@ -412,10 +429,10 @@ export function MeetingPage() {
               ? '저장 중…'
               : saveState === 'saved'
                 ? '저장됐어요!'
-                : `${people[selected]?.id ?? ''} 시간 저장`}
+                : '시간 저장하기'}
           </Button>
           {submitted && saveState !== 'saved' && (
-            <p className="mt-1.5 text-center text-[11.5px] text-neutral-400">
+            <p className="mt-1.5 text-center text-[11.5px] text-ink-muted/60">
               마지막 제출: {new Date(submitted).toLocaleString('ko-KR')}
             </p>
           )}
