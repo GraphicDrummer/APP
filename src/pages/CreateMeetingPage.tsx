@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
-import { riseIn, spring, STAGGER } from '../lib/motion'
+import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { Button, Enter, Field, RoleBadge, Select, TextInput, cardCls } from '../components/ui'
@@ -39,10 +39,18 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
 }
 
 /** ChipRow와 같은 "짧은 라벨 + 입력" 행 스타일 — 후보 날짜 범위(시작/종료)에 사용 */
-function LabeledRow({ label, children }: { label: string; children: React.ReactNode }) {
+function LabeledRow({
+  label,
+  children,
+  className = '',
+}: {
+  label: string
+  children: React.ReactNode
+  className?: string
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="flex-none w-8 text-[11px] font-black text-ink-muted/60">{label}</span>
+    <div className={`flex items-center gap-1.5 min-w-0 ${className}`}>
+      <span className="flex-none text-[11px] font-black text-ink-muted/60">{label}</span>
       {children}
     </div>
   )
@@ -58,6 +66,7 @@ export function CreateMeetingPage() {
   const [durationSlots, setDurationSlots] = useState(1)
   const [hourStart, setHourStart] = useState(9)
   const [hourEnd, setHourEnd] = useState(18)
+  const [deadlineOpen, setDeadlineOpen] = useState(false)
   const [deadlineDate, setDeadlineDate] = useState('')
   const [deadlineHour, setDeadlineHour] = useState(18)
   const [people, setPeople] = useState<DraftPerson[]>([])
@@ -242,14 +251,14 @@ export function CreateMeetingPage() {
 
         <Enter delay={0.08}>
           {/* 모임 정보 */}
-          <section className="space-y-[18px]">
+          <section className="space-y-3">
             <SectionHeading>모임 정보</SectionHeading>
             <Field label="모임 제목">
               <TextInput
                 data-testid="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="예: 7월 정기 회의"
+                placeholder="예: 야채 정기 회의"
               />
             </Field>
 
@@ -258,34 +267,34 @@ export function CreateMeetingPage() {
                 data-testid="organizer"
                 value={organizer}
                 onChange={(e) => setOrganizer(e.target.value)}
-                placeholder="예: 도영"
+                placeholder="예: 감자"
               />
             </Field>
           </section>
 
           {/* 후보 시간 찾기 */}
-          <section className="space-y-[18px] mt-7">
+          <section className="space-y-3 mt-5">
             <SectionHeading>후보 시간 찾기</SectionHeading>
 
             <div>
               <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
                 후보 날짜 범위
               </span>
-              <div className="flex flex-col gap-2">
-                <LabeledRow label="시작">
+              <div className="flex gap-3">
+                <LabeledRow label="시작" className="flex-1">
                   <TextInput
                     data-testid="date-start"
                     type="date"
-                    className="flex-1"
+                    className="flex-1 min-w-0"
                     value={dateStart}
                     onChange={(e) => setDateStart(e.target.value)}
                   />
                 </LabeledRow>
-                <LabeledRow label="종료">
+                <LabeledRow label="종료" className="flex-1">
                   <TextInput
                     data-testid="date-end"
                     type="date"
-                    className="flex-1"
+                    className="flex-1 min-w-0"
                     value={dateEnd}
                     onChange={(e) => setDateEnd(e.target.value)}
                   />
@@ -324,7 +333,7 @@ export function CreateMeetingPage() {
           </section>
 
           {/* 참여자 */}
-          <section className="space-y-[18px] mt-7">
+          <section className="space-y-3 mt-5">
             <SectionHeading>참여자</SectionHeading>
             <div className="flex flex-wrap gap-2">
               {people.map((p, i) => (
@@ -369,33 +378,48 @@ export function CreateMeetingPage() {
             </div>
           </section>
 
-          {/* 응답 받기 · 선택 */}
-          <section className="space-y-[18px] mt-7">
+          {/* 응답 받기 · 선택 — 기본 접힘, 필요할 때만 펼침 */}
+          <section className="space-y-3 mt-5">
             <SectionHeading>응답 받기 · 선택</SectionHeading>
-            <Field label="응답 마감 날짜">
-              <TextInput
-                data-testid="deadline-date"
-                type="date"
-                aria-label="마감 날짜"
-                value={deadlineDate}
-                onChange={(e) => setDeadlineDate(e.target.value)}
-              />
-            </Field>
+            {!deadlineOpen ? (
+              <motion.button
+                type="button"
+                data-testid="add-deadline"
+                onClick={() => setDeadlineOpen(true)}
+                whileTap={press}
+                transition={pressSpring}
+                className="text-[13px] font-bold text-primary cursor-pointer"
+              >
+                + 응답 마감 추가하기
+              </motion.button>
+            ) : (
+              <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring} className="space-y-3">
+                <Field label="응답 마감 날짜">
+                  <TextInput
+                    data-testid="deadline-date"
+                    type="date"
+                    aria-label="마감 날짜"
+                    value={deadlineDate}
+                    onChange={(e) => setDeadlineDate(e.target.value)}
+                  />
+                </Field>
 
-            {deadlineDate && (
-              <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring}>
-                <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
-                  마감 시각
-                </span>
-                <ChipRow
-                  testId="deadline-hour"
-                  options={DEADLINE_HOURS}
-                  value={deadlineHour}
-                  onChange={setDeadlineHour}
-                />
-                <p className="pl-1 pt-1.5 text-[11.5px] font-bold text-ink-muted/60">
-                  마감: {deadlineDate} {hhmm(deadlineHour)}
-                </p>
+                {deadlineDate && (
+                  <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring}>
+                    <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
+                      마감 시각
+                    </span>
+                    <ChipRow
+                      testId="deadline-hour"
+                      options={DEADLINE_HOURS}
+                      value={deadlineHour}
+                      onChange={setDeadlineHour}
+                    />
+                    <p className="pl-1 pt-1.5 text-[11.5px] font-bold text-ink-muted/60">
+                      마감: {deadlineDate} {hhmm(deadlineHour)}
+                    </p>
+                  </motion.div>
+                )}
               </motion.div>
             )}
           </section>
