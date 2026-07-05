@@ -87,7 +87,7 @@ export function AvailabilityGrid({
                       {d}
                     </motion.button>
                   ) : (
-                    <span className="block text-[11px] font-black text-ink-muted">{d}</span>
+                    <span className="block text-[11px] font-black text-ink">{d}</span>
                   )}
                 </th>
               )
@@ -114,7 +114,7 @@ export function AvailabilityGrid({
                     {hhmm(h)}
                   </motion.button>
                 ) : (
-                  <span className="block text-center text-[10px] font-black text-ink-muted">
+                  <span className="block text-center text-[10px] font-black text-ink">
                     {hhmm(h)}
                   </span>
                 )}
@@ -160,7 +160,7 @@ export function GridLegend() {
       {items.map(({ label, cls }) => (
         <span key={label} className="flex items-center gap-1">
           <span className={`w-[11px] h-[11px] rounded-[4px] ${cls}`} />
-          <span className="text-[10px] text-ink-muted/50">{label}</span>
+          <span className="text-[10px] font-bold text-ink-muted">{label}</span>
         </span>
       ))}
     </div>
