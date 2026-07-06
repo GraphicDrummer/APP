@@ -1,0 +1,17 @@
+{
+  "name": "ttak (딱)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": { "label": "Vite dev server", "onAutoForward": "openPreview" }
+  },
+  "postCreateCommand": "npm install && cp -n .env.example .env || true",
+  "postAttachCommand": {
+    "env-reminder": "echo '⚠️  .env 파일에 Supabase URL/anon key를 채워야 앱이 동작합니다 (docs/DEVELOPMENT.md 2-B 참고)'"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["bradlc.vscode-tailwindcss"]
+    }
+  }
+}
