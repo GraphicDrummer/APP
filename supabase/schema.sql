@@ -18,6 +18,8 @@ create table public.meetings (
   deadline       timestamptz,
   -- 확정된 모임 시간 (null이면 아직 미확정)
   confirmed_slot timestamptz,
+  -- 모임 장소 (선택 입력, null이면 미지정)
+  location       text,
   -- 공유 링크(/m/:code)용 추측 불가능한 짧은 코드 — 참여자용, 관리 권한 없음
   share_code     text not null unique,
   -- 관리자 링크(/m/:code?adminKey=...)용 비밀값 — 정보 수정·확정 권한.
@@ -73,7 +75,7 @@ create policy "anon all - availability" on public.availability for all to anon u
 revoke select on public.meetings from anon;
 grant select (
   id, title, organizer_name, date_range, duration_slots,
-  hour_start, hour_end, deadline, confirmed_slot, share_code, created_at
+  hour_start, hour_end, deadline, confirmed_slot, location, share_code, created_at
 ) on public.meetings to anon;
 
 revoke update on public.meetings from anon;
@@ -101,7 +103,8 @@ create or replace function public.admin_update_meeting_info(
   p_hour_start integer,
   p_hour_end integer,
   p_duration_slots integer,
-  p_deadline timestamptz
+  p_deadline timestamptz,
+  p_location text
 )
 returns setof public.meetings
 language sql
@@ -115,16 +118,17 @@ as $$
       hour_start     = p_hour_start,
       hour_end       = p_hour_end,
       duration_slots = p_duration_slots,
-      deadline       = p_deadline
+      deadline       = p_deadline,
+      location       = p_location
   where share_code = p_share_code and admin_key::text = p_admin_key
   returning *;
 $$;
 
 revoke all on function public.admin_update_meeting_info(
-  text, text, text, text, date, date, integer, integer, integer, timestamptz
+  text, text, text, text, date, date, integer, integer, integer, timestamptz, text
 ) from public;
 grant execute on function public.admin_update_meeting_info(
-  text, text, text, text, date, date, integer, integer, integer, timestamptz
+  text, text, text, text, date, date, integer, integer, integer, timestamptz, text
 ) to anon;
 
 create or replace function public.admin_set_confirmed_slot(

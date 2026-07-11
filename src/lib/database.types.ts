@@ -22,6 +22,8 @@ export type MeetingRow = {
   deadline: string | null
   /** 확정된 모임 시간 (ISO 8601). null이면 아직 미확정 */
   confirmed_slot: string | null
+  /** 모임 장소 (선택 입력). null이면 미지정 */
+  location: string | null
   /** 공유 링크(/m/:code)용 짧은 코드 — 참여자용, 관리 권한 없음 */
   share_code: string
   /**
@@ -54,8 +56,8 @@ export type Database = {
     Tables: {
       meetings: {
         Row: MeetingRow
-        Insert: Omit<MeetingRow, 'id' | 'created_at' | 'confirmed_slot'> &
-          Partial<Pick<MeetingRow, 'id' | 'created_at' | 'confirmed_slot'>>
+        Insert: Omit<MeetingRow, 'id' | 'created_at' | 'confirmed_slot' | 'location'> &
+          Partial<Pick<MeetingRow, 'id' | 'created_at' | 'confirmed_slot' | 'location'>>
         Update: Partial<Omit<MeetingRow, 'id'>>
         Relationships: []
       }
@@ -92,6 +94,7 @@ export type Database = {
           p_hour_end: number
           p_duration_slots: number
           p_deadline: string | null
+          p_location: string | null
         }
         Returns: MeetingRow[]
       }

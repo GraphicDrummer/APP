@@ -18,6 +18,20 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 
 const DEADLINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
 
+function CopyIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
+      <rect x="9" y="9" width="11" height="11" rx="2.5" stroke="white" strokeWidth="1.8" />
+      <path
+        d="M15 5.5A2.5 2.5 0 0 0 12.5 3h-7A2.5 2.5 0 0 0 3 5.5v7A2.5 2.5 0 0 0 5.5 15"
+        stroke="white"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 function CardLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="text-[12px] font-black tracking-[0.6px] uppercase text-ink-muted">{children}</p>
@@ -39,6 +53,7 @@ export function CreateMeetingPage() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [organizer, setOrganizer] = useState('')
+  const [location, setLocation] = useState('')
   const [dateStart, setDateStart] = useState('')
   const [dateEnd, setDateEnd] = useState('')
   const [durationSlots, setDurationSlots] = useState(1)
@@ -100,6 +115,7 @@ export function CreateMeetingPage() {
         durationSlots,
         hourStart,
         hourEnd,
+        location: location.trim() || undefined,
         deadline: deadlineOpen && deadlineDate
           ? new Date(`${deadlineDate}T${pad2(deadlineHour)}:00:00`).toISOString()
           : undefined,
@@ -181,12 +197,23 @@ export function CreateMeetingPage() {
                 {shortAdminLink}
               </p>
             </div>
-            <Button 
+
+            <div className="mt-3 flex items-start gap-2 rounded-field bg-soft-bg/60 px-3 py-2.5">
+              <span className="text-[15px] leading-none mt-0.5" aria-hidden>⚠️</span>
+              <p className="text-[12px] font-bold text-soft-ink leading-snug">
+                이 링크를 잃어버리면 다시 찾을 수 없어요.
+                <br />
+                나에게 보내기나 메모에 꼭 보관해두세요!
+              </p>
+            </div>
+
+            <Button
               variant="dark"
-              onClick={() => void copyAdminLink()} 
-              className="w-full mt-4 !py-2.5 !text-[13px] !rounded-full"
+              onClick={() => void copyAdminLink()}
+              className="w-full mt-3 flex items-center justify-center gap-2"
             >
-              {adminCopied ? '복사됐어요!' : '관리자 링크 복사하기'}
+              <CopyIcon />
+              {adminCopied ? '복사됐어요! 메모에 붙여넣으세요' : '관리자 링크 복사하기'}
             </Button>
           </Enter>
 
@@ -270,6 +297,15 @@ export function CreateMeetingPage() {
                 value={organizer}
                 onChange={(e) => setOrganizer(e.target.value)}
                 placeholder="예: 감자"
+              />
+            </Field>
+
+            <Field label="장소 (선택)">
+              <TextInput
+                data-testid="location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="예: 강남역 3번 출구"
               />
             </Field>
           </section>

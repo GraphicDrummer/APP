@@ -50,12 +50,13 @@ export interface CreateMeetingInput {
   hourStart?: number
   hourEnd?: number
   deadline?: string
+  location?: string
 }
 
 // admin_key는 anon이 테이블에서 직접 select할 수 없다 (보안 수정, 0006 마이그레이션 참고).
 // 아래 목록이 anon에게 실제로 허용된 컬럼 전부다 — admin_key는 절대 여기 넣지 않는다.
 const PUBLIC_MEETING_COLUMNS =
-  'id, title, organizer_name, date_range, duration_slots, hour_start, hour_end, deadline, confirmed_slot, share_code, created_at' as const
+  'id, title, organizer_name, date_range, duration_slots, hour_start, hour_end, deadline, confirmed_slot, location, share_code, created_at' as const
 
 export async function createMeeting(input: CreateMeetingInput): Promise<MeetingRow> {
   const adminKey = crypto.randomUUID()
@@ -71,6 +72,7 @@ export async function createMeeting(input: CreateMeetingInput): Promise<MeetingR
         hour_start: input.hourStart ?? 9,
         hour_end: input.hourEnd ?? 18,
         deadline: input.deadline ?? null,
+        location: input.location ?? null,
         share_code: generateShareCode(),
         admin_key: adminKey,
       })
@@ -127,6 +129,8 @@ export interface AdminUpdateMeetingInfoInput {
   durationSlots: number
   /** ISO 8601, null이면 마감 없음 */
   deadline: string | null
+  /** 모임 장소, null이면 미지정 */
+  location: string | null
 }
 
 /** 관리자 전용 — 모임 정보 수정. admin_key가 맞는 행만 DB에서 실제로 갱신된다 */
@@ -146,6 +150,7 @@ export async function adminUpdateMeetingInfo(
     p_hour_end: input.hourEnd,
     p_duration_slots: input.durationSlots,
     p_deadline: input.deadline,
+    p_location: input.location,
   })
   if (error) throw new Error(error.message)
   if (!data?.[0]) throw new Error('관리자 인증에 실패했어요. 링크를 다시 확인해주세요.')

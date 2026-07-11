@@ -7,6 +7,8 @@ export interface CalendarEvent {
   /** 길이 (시간 단위) */
   durationHours: number
   description?: string
+  /** 모임 장소 (선택) */
+  location?: string
 }
 
 /** ISO → ICS/구글 캘린더용 UTC 포맷 (YYYYMMDDTHHMMSSZ) */
@@ -31,6 +33,7 @@ export function buildIcs(ev: CalendarEvent): string {
     `DTEND:${toCalDate(endIso(ev.startIso, ev.durationHours))}`,
     `SUMMARY:${ev.title.replace(/([,;\\])/g, '\\$1')}`,
     ...(ev.description ? [`DESCRIPTION:${ev.description.replace(/([,;\\])/g, '\\$1')}`] : []),
+    ...(ev.location ? [`LOCATION:${ev.location.replace(/([,;\\])/g, '\\$1')}`] : []),
     'END:VEVENT',
     'END:VCALENDAR',
   ]
@@ -54,6 +57,7 @@ export function googleCalendarUrl(ev: CalendarEvent): string {
     text: ev.title,
     dates,
     ...(ev.description ? { details: ev.description } : {}),
+    ...(ev.location ? { location: ev.location } : {}),
   })
   return `https://calendar.google.com/calendar/render?${params.toString()}`
 }

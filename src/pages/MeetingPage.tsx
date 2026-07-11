@@ -20,7 +20,7 @@ import { downloadIcs, googleCalendarUrl } from '../lib/calendar'
 import { downloadResultPng } from '../lib/resultImage'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { press, pressSpring, riseIn, spring } from '../lib/motion'
 import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '../components/ui'
 import { AvailabilityGrid } from '../components/AvailabilityGrid'
@@ -36,6 +36,9 @@ const NEXT_STATE: Record<string, CellState | undefined> = {
 }
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
+// 그리드에 처음 진입한 사람에게만 보여주는 온보딩 힌트 — 첫 탭과 함께 사라지고
+// 이후 다시 뜨지 않도록 브라우저에 본 적 있음을 기록한다.
+const GRID_HINT_SEEN_KEY = 'ttak_grid_hint_seen'
 const pad2 = (n: number) => String(n).padStart(2, '0')
 const DEADLINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
 
@@ -60,6 +63,20 @@ function CalendarIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
       <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="white" strokeWidth="1.8" />
       <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function PinIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
+      <path
+        d="M12 21c4-4.5 7-7.9 7-11a7 7 0 1 0-14 0c0 3.1 3 6.5 7 11Z"
+        stroke="white"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="10" r="2.4" stroke="white" strokeWidth="1.8" />
     </svg>
   )
 }
@@ -127,6 +144,23 @@ export function MeetingPage() {
   const [copied, setCopied] = useState(false)
   const [cascadeDay, setCascadeDay] = useState<number | null>(null)
   const [view, setView] = useState<'adjust' | 'done' | null>(null)
+  const [showGridHint, setShowGridHint] = useState(() => {
+    try {
+      return localStorage.getItem(GRID_HINT_SEEN_KEY) === null
+    } catch {
+      return false
+    }
+  })
+
+  const dismissGridHint = () => {
+    if (!showGridHint) return
+    setShowGridHint(false)
+    try {
+      localStorage.setItem(GRID_HINT_SEEN_KEY, '1')
+    } catch {
+      // localStorage 차단(시크릿 모드 등) — 힌트만 이번 세션에서 사라지면 충분하다
+    }
+  }
 
   // admin_key는 anon이 테이블에서 직접 읽을 수 없으므로, "이 meeting 객체에
   // admin_key가 채워져 있다" = "verifyAdminKey 검증을 이미 통과했다"와 같은 뜻이다.
@@ -136,6 +170,7 @@ export function MeetingPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editTitle, setEditTitle] = useState('')
   const [editOrganizer, setEditOrganizer] = useState('')
+  const [editLocation, setEditLocation] = useState('')
   const [editDateStart, setEditDateStart] = useState('')
   const [editDateEnd, setEditDateEnd] = useState('')
   const [editHourStart, setEditHourStart] = useState(9)
@@ -217,6 +252,7 @@ export function MeetingPage() {
 
   const cycleCell = (d: number, h: number) => {
     const k = `${d}-${h}`
+    dismissGridHint()
     setCascadeDay(null)
     setPeople((prev) =>
       prev.map((p, i) => {
@@ -232,6 +268,7 @@ export function MeetingPage() {
   }
 
   const cycleDay = (d: number) => {
+    dismissGridHint()
     setCascadeDay(d)
     window.setTimeout(() => setCascadeDay(null), hours.length * 20 + 250)
     setPeople((prev) =>
@@ -252,6 +289,7 @@ export function MeetingPage() {
   }
 
   const cycleHour = (h: number) => {
+    dismissGridHint()
     setCascadeDay(null)
     setPeople((prev) =>
       prev.map((p, i) => {
@@ -303,6 +341,7 @@ export function MeetingPage() {
     const r = parseDateRange(meeting.date_range)
     setEditTitle(meeting.title)
     setEditOrganizer(meeting.organizer_name)
+    setEditLocation(meeting.location ?? '')
     setEditDateStart(r.start)
     setEditDateEnd(r.end)
     setEditHourStart(meeting.hour_start)
@@ -342,6 +381,7 @@ export function MeetingPage() {
       const updated = await adminUpdateMeetingInfo(meeting.share_code, meeting.admin_key, {
         title: editTitle.trim(),
         organizerName: editOrganizer.trim(),
+        location: editLocation.trim() || null,
         dateStart: editDateStart,
         dateEnd: editDateEnd,
         hourStart: editHourStart,
@@ -415,6 +455,7 @@ export function MeetingPage() {
       startIso: meeting.confirmed_slot,
       durationHours: meeting.duration_slots,
       description: `주최: ${meeting.organizer_name} — 딱에서 확정된 시간이에요.`,
+      location: meeting.location ?? undefined,
     }
     const copyLink = async () => {
       await navigator.clipboard.writeText(window.location.href)
@@ -456,6 +497,15 @@ export function MeetingPage() {
               >
                 {timeText}
               </p>
+              {meeting.location && (
+                <p
+                  data-testid="confirmed-location"
+                  className="flex items-center gap-1.5 text-[14px] font-bold text-white/90"
+                >
+                  <PinIcon />
+                  {meeting.location}
+                </p>
+              )}
             </div>
           </Enter>
 
@@ -559,6 +609,11 @@ export function MeetingPage() {
               {meeting?.deadline &&
                 ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
             </p>
+            {meeting?.location && (
+              <p data-testid="meeting-location" className="text-[11.5px] font-bold text-ink-muted mt-0.5">
+                📍 {meeting.location}
+              </p>
+            )}
           </header>
 
           {isAdmin && (
@@ -593,6 +648,14 @@ export function MeetingPage() {
                       data-testid="edit-organizer"
                       value={editOrganizer}
                       onChange={(e) => setEditOrganizer(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="장소 (선택)">
+                    <TextInput
+                      data-testid="edit-location"
+                      value={editLocation}
+                      onChange={(e) => setEditLocation(e.target.value)}
+                      placeholder="예: 강남역 3번 출구"
                     />
                   </Field>
                   <div className="flex gap-3">
@@ -744,6 +807,21 @@ export function MeetingPage() {
 
           {people[selected] && (
             <div className="mt-2.5">
+              <AnimatePresence initial={false}>
+                {showGridHint && (
+                  <motion.p
+                    key="grid-hint"
+                    data-testid="grid-hint"
+                    initial={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto', marginBottom: 10 }}
+                    exit={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
+                    transition={spring}
+                    className="overflow-hidden text-[12.5px] font-bold text-primary bg-primary/8 rounded-field px-3 py-2 text-center"
+                  >
+                    칸을 눌러 되는 시간을 칠해보세요. 애매하면 한 번 더!
+                  </motion.p>
+                )}
+              </AnimatePresence>
               <AvailabilityGrid
                 person={people[selected]}
                 onCycleCell={cycleCell}
