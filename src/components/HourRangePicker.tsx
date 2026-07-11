@@ -13,6 +13,7 @@ export function ChipRow({
   value,
   onChange,
   testId,
+  isDisabled,
 }: {
   /** 생략하면 라벨 없이 칩만 표시 */
   label?: string
@@ -20,6 +21,8 @@ export function ChipRow({
   value: number
   onChange: (v: number) => void
   testId: string
+  /** true를 반환하는 칩은 위치는 그대로 두고 흐리게(opacity) + 선택 불가 처리 */
+  isDisabled?: (v: number) => boolean
 }) {
   const scroller = useRef<HTMLDivElement>(null)
   // 마우스 드래그로도 스크롤되게 — 터치는 브라우저 네이티브 스크롤에 맡긴다
@@ -74,27 +77,33 @@ export function ChipRow({
         onPointerLeave={endDrag}
         className="flex gap-1.5 overflow-x-auto py-0.5 cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {options.map((h) => (
-          <motion.button
-            key={h}
-            type="button"
-            data-hour={h}
-            aria-pressed={h === value}
-            onClick={() => {
-              if (drag.current.moved) return // 드래그 끝의 클릭은 무시
-              onChange(h)
-            }}
-            whileTap={press}
-            transition={pressSpring}
-            className={`flex-none rounded-full px-3 py-1.5 text-[12px] font-bold cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${
-              h === value
-                ? 'bg-primary text-white'
-                : 'bg-white border border-line text-ink-muted'
-            }`}
-          >
-            {hhmm(h)}
-          </motion.button>
-        ))}
+        {options.map((h) => {
+          const disabled = isDisabled?.(h) ?? false
+          return (
+            <motion.button
+              key={h}
+              type="button"
+              data-hour={h}
+              disabled={disabled}
+              aria-pressed={h === value}
+              onClick={() => {
+                if (drag.current.moved) return // 드래그 끝의 클릭은 무시
+                onChange(h)
+              }}
+              whileTap={disabled ? undefined : press}
+              transition={pressSpring}
+              className={`flex-none rounded-full px-3 py-1.5 text-[12px] font-bold transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
+                disabled
+                  ? 'opacity-30 cursor-not-allowed bg-white border border-line text-ink-muted'
+                  : h === value
+                    ? 'bg-primary text-white cursor-pointer'
+                    : 'bg-white border border-line text-ink-muted cursor-pointer'
+              }`}
+            >
+              {hhmm(h)}
+            </motion.button>
+          )
+        })}
       </div>
     </div>
   )
@@ -107,8 +116,10 @@ interface Props {
 }
 
 export function HourRangePicker({ start, end, onChange }: Props) {
+  // 두 행 모두 항상 같은 칩 세트를 고정 위치에 렌더한다 — 시작: 0~23, 끝(배타적): 1~24.
+  // 시작 선택에 따라 목록 길이가 바뀌면 칩 위치가 밀리므로, 대신 선택 불가 칩만 흐리게 처리.
   const startOptions = Array.from({ length: 24 }, (_, h) => h)
-  const endOptions = Array.from({ length: 24 - start }, (_, i) => start + 1 + i)
+  const endOptions = Array.from({ length: 24 }, (_, i) => i + 1)
 
   return (
     <div className="space-y-2">
@@ -125,6 +136,7 @@ export function HourRangePicker({ start, end, onChange }: Props) {
         options={endOptions}
         value={end}
         onChange={(e) => onChange(start, e)}
+        isDisabled={(h) => h <= start}
       />
       <p className="pl-10 text-[11.5px] font-bold text-ink-muted/60">
         {hhmm(start)} ~ {hhmm(end)} · 참여자는 이 범위만 입력해요
