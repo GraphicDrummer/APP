@@ -125,6 +125,10 @@ export function CreateMeetingPage() {
   const [activeSlot, setActiveSlot] = useState<SlotKey | null>(null)
   const [locationOpen, setLocationOpen] = useState(false)
   const toggleSlot = (k: SlotKey) => setActiveSlot((cur) => (cur === k ? null : k))
+  // 시간대·소요시간은 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해
+  // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"비는 시간")로 보여준다.
+  const [hoursTouched, setHoursTouched] = useState(false)
+  const [durationTouched, setDurationTouched] = useState(false)
   
   const [link, setLink] = useState<string | null>(null)
   const [adminLink, setAdminLink] = useState<string | null>(null)
@@ -374,7 +378,7 @@ export function CreateMeetingPage() {
           {/* 문장형 폼 — 각 [ ]는 밑줄 친 탭 영역, 누르면 그 자리에서 입력 UI가 펼쳐진다 */}
           <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2.5 text-[18px] font-bold leading-[1.85] tracking-[-0.3px]">
             <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')}>
-              {title.trim() || '모임 제목'}
+              {title.trim() || '새로운'}
             </Slot>
             <AnimatePresence initial={false}>
               {activeSlot === 'title' && (
@@ -393,7 +397,7 @@ export function CreateMeetingPage() {
             <span>회의,</span>
 
             <Slot testId="slot-dates" filled={!!(dateStart && dateEnd)} active={activeSlot === 'dates'} onToggle={() => toggleSlot('dates')}>
-              {dateStart && dateEnd ? `${fmtDate(dateStart)}~${fmtDate(dateEnd)}` : '날짜 범위'}
+              {dateStart && dateEnd ? `${fmtDate(dateStart)}~${fmtDate(dateEnd)}` : '이 날짜들'}
             </Slot>
             <AnimatePresence initial={false}>
               {activeSlot === 'dates' && (
@@ -427,8 +431,8 @@ export function CreateMeetingPage() {
 
             <span>중</span>
 
-            <Slot testId="slot-hours" filled active={activeSlot === 'hours'} onToggle={() => toggleSlot('hours')}>
-              {`${hhmm(hourStart)}~${hhmm(hourEnd)}`}
+            <Slot testId="slot-hours" filled={hoursTouched} active={activeSlot === 'hours'} onToggle={() => toggleSlot('hours')}>
+              {hoursTouched ? `${hhmm(hourStart)}~${hhmm(hourEnd)}` : '이 시간대'}
             </Slot>
             <AnimatePresence initial={false}>
               {activeSlot === 'hours' && (
@@ -439,6 +443,7 @@ export function CreateMeetingPage() {
                     onChange={(s, e) => {
                       setHourStart(s)
                       setHourEnd(e)
+                      setHoursTouched(true)
                     }}
                   />
                 </EditorPanel>
@@ -447,8 +452,8 @@ export function CreateMeetingPage() {
 
             <span>사이에서</span>
 
-            <Slot testId="slot-duration" filled active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')}>
-              {`${durationSlots}시간`}
+            <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')}>
+              {durationTouched ? `${durationSlots}시간` : '비는 시간'}
             </Slot>
             <AnimatePresence initial={false}>
               {activeSlot === 'duration' && (
@@ -457,7 +462,10 @@ export function CreateMeetingPage() {
                     <Select
                       data-testid="duration"
                       value={durationSlots}
-                      onChange={(e) => setDurationSlots(Number(e.target.value))}
+                      onChange={(e) => {
+                        setDurationSlots(Number(e.target.value))
+                        setDurationTouched(true)
+                      }}
                     >
                       <option value={1}>1시간</option>
                       <option value={2}>2시간</option>
@@ -480,7 +488,7 @@ export function CreateMeetingPage() {
               active={activeSlot === 'deadline'}
               onToggle={() => toggleSlot('deadline')}
             >
-              {deadlineOpen && deadlineDate ? `${fmtDate(deadlineDate)} ${hhmm(deadlineHour)}` : '마감 없음'}
+              {deadlineOpen && deadlineDate ? `${fmtDate(deadlineDate)} ${hhmm(deadlineHour)}` : '이 때'}
             </Slot>
             <span>까지.</span>
             <AnimatePresence initial={false}>
