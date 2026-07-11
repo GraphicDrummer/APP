@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
@@ -18,13 +18,70 @@ const pad2 = (n: number) => String(n).padStart(2, '0')
 
 const DEADLINE_HOURS = Array.from({ length: 24 }, (_, h) => h)
 
-function CopyIcon() {
+// 문장형 폼에서 [ ] 안에 짧게 보여줄 날짜 표기 — "2026-07-20" → "7/20"
+const fmtDate = (iso: string) => {
+  const [, m, d] = iso.split('-')
+  return `${Number(m)}/${Number(d)}`
+}
+
+type SlotKey = 'title' | 'dates' | 'hours' | 'duration' | 'deadline'
+
+// 문장 속 밑줄 친 탭 영역 — 누르면 그 자리 아래로 입력 UI가 펼쳐진다
+function Slot({
+  filled,
+  active,
+  onToggle,
+  testId,
+  children,
+}: {
+  filled: boolean
+  active: boolean
+  onToggle: () => void
+  testId: string
+  children: React.ReactNode
+}) {
+  return (
+    <motion.button
+      type="button"
+      data-testid={testId}
+      onClick={onToggle}
+      whileTap={press}
+      transition={pressSpring}
+      className={`rounded-md px-1 underline decoration-2 underline-offset-[5px] cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${
+        active
+          ? 'text-primary bg-primary/10 decoration-primary'
+          : filled
+            ? 'text-primary decoration-primary/50'
+            : 'text-ink-muted/70 decoration-ink-muted/30'
+      }`}
+    >
+      {children}
+    </motion.button>
+  )
+}
+
+// 밑줄 영역 바로 아래에서 펼쳐지는 입력 패널 — flex-wrap 안에서 w-full이라 그 자리에서 줄바꿈되어 등장
+function EditorPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      transition={spring}
+      className="w-full overflow-hidden"
+    >
+      <div className="mt-2 mb-1 rounded-card border border-line bg-surface shadow-card p-4">{children}</div>
+    </motion.div>
+  )
+}
+
+function CopyIcon({ stroke = 'white' }: { stroke?: string }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden className="shrink-0">
-      <rect x="9" y="9" width="11" height="11" rx="2.5" stroke="white" strokeWidth="1.8" />
+      <rect x="9" y="9" width="11" height="11" rx="2.5" stroke={stroke} strokeWidth="1.8" />
       <path
         d="M15 5.5A2.5 2.5 0 0 0 12.5 3h-7A2.5 2.5 0 0 0 3 5.5v7A2.5 2.5 0 0 0 5.5 15"
-        stroke="white"
+        stroke={stroke}
         strokeWidth="1.8"
         strokeLinecap="round"
       />
@@ -32,20 +89,18 @@ function CopyIcon() {
   )
 }
 
-function CardLabel({ children }: { children: React.ReactNode }) {
+// 카카오톡 말풍선 아이콘 — 노란 버튼 위 진한 잉크색으로 채운다
+function KakaoIcon() {
   return (
-    <p className="text-[12px] font-black tracking-[0.6px] uppercase text-ink-muted">{children}</p>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="#191919" aria-hidden className="shrink-0">
+      <path d="M12 4C7 4 3 7.13 3 10.98c0 2.44 1.62 4.58 4.05 5.79-.18.64-.65 2.34-.74 2.7-.12.45.16.44.34.32.14-.09 2.24-1.52 3.15-2.14.63.09 1.28.14 1.95.14 5 0 9-3.13 9-6.98S17 4 12 4Z" />
+    </svg>
   )
 }
 
-function SectionHeading({ children }: { children: React.ReactNode }) {
+function CardLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <span className="text-[11px] font-black tracking-[1px] uppercase text-ink-muted/50 whitespace-nowrap">
-        {children}
-      </span>
-      <span className="flex-1 h-px bg-line" />
-    </div>
+    <p className="text-[12px] font-black tracking-[0.6px] uppercase text-ink-muted">{children}</p>
   )
 }
 
@@ -66,6 +121,10 @@ export function CreateMeetingPage() {
   const [newName, setNewName] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 문장형 폼: 지금 펼쳐진 밑줄 영역(하나만) / 장소 토글
+  const [activeSlot, setActiveSlot] = useState<SlotKey | null>(null)
+  const [locationOpen, setLocationOpen] = useState(false)
+  const toggleSlot = (k: SlotKey) => setActiveSlot((cur) => (cur === k ? null : k))
   
   const [link, setLink] = useState<string | null>(null)
   const [adminLink, setAdminLink] = useState<string | null>(null)
@@ -148,6 +207,25 @@ export function CreateMeetingPage() {
     setTimeout(() => setAdminCopied(false), 1500)
   }
 
+  // 카카오톡 등으로 관리자 링크 보내기 — 모바일은 네이티브 공유 시트(카카오톡 선택 가능),
+  // 공유 API가 없는 데스크톱은 링크 복사로 폴백한다.
+  const shareAdminLink = async () => {
+    if (!adminLink) return
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `딱. — ${title}`,
+          text: `[딱.] "${title}" 모임 관리자 링크예요. 잃어버리면 다시 찾을 수 없으니 꼭 보관해두세요!`,
+          url: adminLink,
+        })
+      } catch {
+        // 사용자가 공유 시트를 닫음 — 조용히 무시
+      }
+      return
+    }
+    await copyAdminLink()
+  }
+
   if (link) {
     const path = new URL(link).pathname
     const shortLink = link.replace(/^https?:\/\//, '')
@@ -203,17 +281,30 @@ export function CreateMeetingPage() {
               <p className="text-[12px] font-bold text-soft-ink leading-snug">
                 이 링크를 잃어버리면 다시 찾을 수 없어요.
                 <br />
-                나에게 보내기나 메모에 꼭 보관해두세요!
+                지금 카카오톡으로 나에게 보내두세요!
               </p>
             </div>
 
-            <Button
-              variant="dark"
-              onClick={() => void copyAdminLink()}
-              className="w-full mt-3 flex items-center justify-center gap-2"
+            <motion.button
+              type="button"
+              data-testid="share-admin-kakao"
+              onClick={() => void shareAdminLink()}
+              whileTap={press}
+              transition={pressSpring}
+              className="w-full mt-3 rounded-field bg-[#FEE500] text-[#191919] py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
             >
-              <CopyIcon />
-              {adminCopied ? '복사됐어요! 메모에 붙여넣으세요' : '관리자 링크 복사하기'}
+              <KakaoIcon />
+              카카오톡으로 나에게 보내기
+            </motion.button>
+
+            <Button
+              variant="ghost"
+              data-testid="copy-admin-link"
+              onClick={() => void copyAdminLink()}
+              className="w-full mt-2 !py-2.5 !text-[13px] flex items-center justify-center gap-2"
+            >
+              <CopyIcon stroke="#1a2028" />
+              {adminCopied ? '복사됐어요!' : '링크 복사'}
             </Button>
           </Enter>
 
@@ -270,27 +361,177 @@ export function CreateMeetingPage() {
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
         <Enter>
           <header className="pt-5 pb-5">
-            <h1 className="text-[28px] font-black tracking-[-1.4px] leading-tight">
-              딱<span className="text-primary">.</span>
+            <h1 className="text-[26px] font-black tracking-[-1.3px] leading-tight">
+              새로운 회의를 시작해요<span className="text-primary">.</span>
             </h1>
-            <p className="text-[13px] text-ink-muted mt-1">
-              모두에게 <b className="text-ink">딱 맞는 시간</b>을 골라드려요.
+            <p className="text-[13px] text-ink-muted mt-1.5">
+              밑줄 친 곳을 눌러 채워주세요.
             </p>
           </header>
         </Enter>
 
         <Enter delay={0.08}>
-          <section className="space-y-3">
-            <SectionHeading>모임 정보</SectionHeading>
-            <Field label="모임 제목">
-              <TextInput
-                data-testid="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="예: 야채 정기 회의"
-              />
-            </Field>
+          {/* 문장형 폼 — 각 [ ]는 밑줄 친 탭 영역, 누르면 그 자리에서 입력 UI가 펼쳐진다 */}
+          <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2.5 text-[18px] font-bold leading-[1.85] tracking-[-0.3px]">
+            <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')}>
+              {title.trim() || '모임 제목'}
+            </Slot>
+            <AnimatePresence initial={false}>
+              {activeSlot === 'title' && (
+                <EditorPanel key="ed-title">
+                  <TextInput
+                    data-testid="title"
+                    autoFocus
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="예: 야채 정기 회의"
+                  />
+                </EditorPanel>
+              )}
+            </AnimatePresence>
 
+            <span>회의,</span>
+
+            <Slot testId="slot-dates" filled={!!(dateStart && dateEnd)} active={activeSlot === 'dates'} onToggle={() => toggleSlot('dates')}>
+              {dateStart && dateEnd ? `${fmtDate(dateStart)}~${fmtDate(dateEnd)}` : '날짜 범위'}
+            </Slot>
+            <AnimatePresence initial={false}>
+              {activeSlot === 'dates' && (
+                <EditorPanel key="ed-dates">
+                  <div className="flex gap-3">
+                    <LabeledRow label="시작" className="flex-1">
+                      <TextInput
+                        data-testid="date-start"
+                        type="date"
+                        className="flex-1 min-w-0"
+                        value={dateStart}
+                        onChange={(e) => setDateStart(e.target.value)}
+                      />
+                    </LabeledRow>
+                    <LabeledRow label="종료" className="flex-1">
+                      <TextInput
+                        data-testid="date-end"
+                        type="date"
+                        className="flex-1 min-w-0"
+                        value={dateEnd}
+                        onChange={(e) => setDateEnd(e.target.value)}
+                      />
+                    </LabeledRow>
+                  </div>
+                  <p className="pl-1 pt-2 text-[11.5px] font-bold text-ink-muted/60">
+                    이 기간 안에서 다들 가능한 시간을 찾아드려요
+                  </p>
+                </EditorPanel>
+              )}
+            </AnimatePresence>
+
+            <span>중</span>
+
+            <Slot testId="slot-hours" filled active={activeSlot === 'hours'} onToggle={() => toggleSlot('hours')}>
+              {`${hhmm(hourStart)}~${hhmm(hourEnd)}`}
+            </Slot>
+            <AnimatePresence initial={false}>
+              {activeSlot === 'hours' && (
+                <EditorPanel key="ed-hours">
+                  <HourRangePicker
+                    start={hourStart}
+                    end={hourEnd}
+                    onChange={(s, e) => {
+                      setHourStart(s)
+                      setHourEnd(e)
+                    }}
+                  />
+                </EditorPanel>
+              )}
+            </AnimatePresence>
+
+            <span>사이에서</span>
+
+            <Slot testId="slot-duration" filled active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')}>
+              {`${durationSlots}시간`}
+            </Slot>
+            <AnimatePresence initial={false}>
+              {activeSlot === 'duration' && (
+                <EditorPanel key="ed-duration">
+                  <Field label="소요 시간">
+                    <Select
+                      data-testid="duration"
+                      value={durationSlots}
+                      onChange={(e) => setDurationSlots(Number(e.target.value))}
+                    >
+                      <option value={1}>1시간</option>
+                      <option value={2}>2시간</option>
+                      <option value={3}>3시간</option>
+                    </Select>
+                  </Field>
+                </EditorPanel>
+              )}
+            </AnimatePresence>
+
+            <span>을 찾을게요.</span>
+
+            {/* 다음 문장을 새 줄에서 시작 — flex-wrap 강제 줄바꿈 */}
+            <span className="w-full" aria-hidden />
+
+            <span>답변은</span>
+            <Slot
+              testId="slot-deadline"
+              filled={deadlineOpen && !!deadlineDate}
+              active={activeSlot === 'deadline'}
+              onToggle={() => toggleSlot('deadline')}
+            >
+              {deadlineOpen && deadlineDate ? `${fmtDate(deadlineDate)} ${hhmm(deadlineHour)}` : '마감 없음'}
+            </Slot>
+            <span>까지.</span>
+            <AnimatePresence initial={false}>
+              {activeSlot === 'deadline' && (
+                <EditorPanel key="ed-deadline">
+                  <Field label="응답 마감 날짜">
+                    <TextInput
+                      data-testid="deadline-date"
+                      type="date"
+                      aria-label="마감 날짜"
+                      value={deadlineDate}
+                      onChange={(e) => {
+                        setDeadlineDate(e.target.value)
+                        setDeadlineOpen(!!e.target.value)
+                      }}
+                    />
+                  </Field>
+                  {deadlineDate && (
+                    <div className="mt-3">
+                      <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
+                        마감 시각
+                      </span>
+                      <ChipRow
+                        testId="deadline-hour"
+                        options={DEADLINE_HOURS}
+                        value={deadlineHour}
+                        onChange={setDeadlineHour}
+                      />
+                    </div>
+                  )}
+                  {deadlineOpen && deadlineDate && (
+                    <button
+                      type="button"
+                      data-testid="clear-deadline"
+                      onClick={() => {
+                        setDeadlineOpen(false)
+                        setDeadlineDate('')
+                      }}
+                      className="mt-3 text-[12px] font-bold text-ink-muted/70 underline cursor-pointer"
+                    >
+                      마감 없음으로
+                    </button>
+                  )}
+                </EditorPanel>
+              )}
+            </AnimatePresence>
+          </div>
+        </Enter>
+
+        <Enter delay={0.12}>
+          <div className="mt-8 space-y-5">
             <Field label="주최자">
               <TextInput
                 data-testid="organizer"
@@ -300,164 +541,89 @@ export function CreateMeetingPage() {
               />
             </Field>
 
-            <Field label="장소 (선택)">
-              <TextInput
-                data-testid="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="예: 강남역 3번 출구"
-              />
-            </Field>
-          </section>
-
-          <section className="space-y-3 mt-5">
-            <SectionHeading>후보 시간 찾기</SectionHeading>
-
             <div>
-              <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
-                후보 날짜 범위
-              </span>
-              <div className="flex gap-3">
-                <LabeledRow label="시작" className="flex-1">
-                  <TextInput
-                    data-testid="date-start"
-                    type="date"
-                    className="flex-1 min-w-0"
-                    value={dateStart}
-                    onChange={(e) => setDateStart(e.target.value)}
-                  />
-                </LabeledRow>
-                <LabeledRow label="종료" className="flex-1">
-                  <TextInput
-                    data-testid="date-end"
-                    type="date"
-                    className="flex-1 min-w-0"
-                    value={dateEnd}
-                    onChange={(e) => setDateEnd(e.target.value)}
-                  />
-                </LabeledRow>
-              </div>
-              <p className="pl-1 pt-1.5 text-[11.5px] font-bold text-ink-muted/60">
-                이 기간 안에서 다들 가능한 시간을 찾아드려요
-              </p>
-            </div>
-
-            <div>
-              <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
-                시간 범위
-              </span>
-              <HourRangePicker
-                start={hourStart}
-                end={hourEnd}
-                onChange={(s, e) => {
-                  setHourStart(s)
-                  setHourEnd(e)
-                }}
-              />
-            </div>
-
-            <Field label="소요 시간">
-              <Select
-                data-testid="duration"
-                value={durationSlots}
-                onChange={(e) => setDurationSlots(Number(e.target.value))}
-              >
-                <option value={1}>1시간</option>
-                <option value={2}>2시간</option>
-                <option value={3}>3시간</option>
-              </Select>
-            </Field>
-          </section>
-
-          <section className="space-y-3 mt-5">
-            <SectionHeading>참여자</SectionHeading>
-            <div className="flex flex-wrap gap-2">
-              {people.map((p, i) => (
-                <motion.span
-                  key={p.name}
-                  initial={riseIn.initial}
-                  animate={riseIn.animate}
-                  transition={{ ...spring, delay: i * STAGGER }}
-                  className="inline-flex items-center gap-1.5 bg-surface border border-line rounded-field pl-3 pr-2 py-2"
-                >
-                  <span className="text-[13px] font-bold">{p.name}</span>
-                  <RoleBadge
-                    role={p.role}
-                    data-testid={`draft-role-${p.name}`}
-                    onClick={() => toggleRole(i)}
-                  />
-                  <motion.button
-                    type="button"
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => removePerson(i)}
-                    aria-label={`${p.name} 삭제`}
-                    className="w-[15px] h-[15px] rounded-full bg-surface-sub/50 text-ink-muted text-[9px] leading-[15px] text-center cursor-pointer"
+              <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">참여자</span>
+              <div className="flex flex-wrap gap-2">
+                {people.map((p, i) => (
+                  <motion.span
+                    key={p.name}
+                    initial={riseIn.initial}
+                    animate={riseIn.animate}
+                    transition={{ ...spring, delay: i * STAGGER }}
+                    className="inline-flex items-center gap-1.5 bg-surface border border-line rounded-field pl-3 pr-2 py-2"
                   >
-                    ✕
-                  </motion.button>
-                </motion.span>
-              ))}
-              <input
-                data-testid="new-person"
-                className="min-w-[140px] flex-1 rounded-field border border-dashed border-line bg-transparent px-3 py-2 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    addPerson()
-                  }
-                }}
-                onBlur={addPerson}
-                placeholder="+ 참여자 추가"
-              />
-            </div>
-          </section>
-
-          <section className="space-y-3 mt-5">
-            <SectionHeading>응답 받기 · 선택</SectionHeading>
-            {!deadlineOpen ? (
-              <motion.button
-                type="button"
-                data-testid="add-deadline"
-                onClick={() => setDeadlineOpen(true)}
-                whileTap={press}
-                transition={pressSpring}
-                className="text-[13px] font-bold text-primary cursor-pointer"
-              >
-                + 응답 마감 추가하기
-              </motion.button>
-            ) : (
-              <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring} className="space-y-3">
-                <Field label="응답 마감 날짜">
-                  <TextInput
-                    data-testid="deadline-date"
-                    type="date"
-                    aria-label="마감 날짜"
-                    value={deadlineDate}
-                    onChange={(e) => setDeadlineDate(e.target.value)}
-                  />
-                </Field>
-
-                {deadlineDate && (
-                  <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring}>
-                    <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
-                      마감 시각
-                    </span>
-                    <ChipRow
-                      testId="deadline-hour"
-                      options={DEADLINE_HOURS}
-                      value={deadlineHour}
-                      onChange={setDeadlineHour}
+                    <span className="text-[13px] font-bold">{p.name}</span>
+                    <RoleBadge
+                      role={p.role}
+                      data-testid={`draft-role-${p.name}`}
+                      onClick={() => toggleRole(i)}
                     />
-                    <p className="pl-1 pt-1.5 text-[11.5px] font-bold text-ink-muted/60">
-                      마감: {deadlineDate} {hhmm(deadlineHour)}
-                    </p>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </section>
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => removePerson(i)}
+                      aria-label={`${p.name} 삭제`}
+                      className="w-[15px] h-[15px] rounded-full bg-surface-sub/50 text-ink-muted text-[9px] leading-[15px] text-center cursor-pointer"
+                    >
+                      ✕
+                    </motion.button>
+                  </motion.span>
+                ))}
+                <input
+                  data-testid="new-person"
+                  className="min-w-[140px] flex-1 rounded-field border border-dashed border-line bg-transparent px-3 py-2 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      addPerson()
+                    }
+                  }}
+                  onBlur={addPerson}
+                  placeholder="+ 참여자 추가"
+                />
+              </div>
+            </div>
+
+            <div>
+              {!locationOpen ? (
+                <motion.button
+                  type="button"
+                  data-testid="add-location"
+                  onClick={() => setLocationOpen(true)}
+                  whileTap={press}
+                  transition={pressSpring}
+                  className="text-[13px] font-bold text-primary cursor-pointer"
+                >
+                  + 장소 (선택)
+                </motion.button>
+              ) : (
+                <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring}>
+                  <div className="flex items-center justify-between pl-1 pb-1.5">
+                    <span className="text-[13px] font-bold text-ink-muted">장소 (선택)</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationOpen(false)
+                        setLocation('')
+                      }}
+                      className="text-[11px] font-bold text-ink-muted/60 cursor-pointer"
+                    >
+                      제거
+                    </button>
+                  </div>
+                  <TextInput
+                    data-testid="location"
+                    autoFocus
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="예: 강남역 3번 출구"
+                  />
+                </motion.div>
+              )}
+            </div>
+          </div>
 
           {error && (
             <p data-testid="create-error" className="text-[13px] font-bold text-danger mt-5">

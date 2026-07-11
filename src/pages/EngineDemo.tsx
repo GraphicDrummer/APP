@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { DAYS, HOURS, key, recommend, type CellState, type Person } from '../engine'
 import { presetBase, presetVariant } from '../presets'
 import { mondayOf, slotToIso } from '../lib/slots'
-import { AvailabilityGrid } from '../components/AvailabilityGrid'
+import { AvailabilityGrid, type CascadeSignal } from '../components/AvailabilityGrid'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
 
@@ -19,8 +19,8 @@ export function EngineDemo() {
   const [selected, setSelected] = useState(0)
   const [scenario, setScenario] = useState<0 | 1>(0)
   const [confirmed, setConfirmed] = useState<string | null>(null)
-  // 요일 일괄 변경 시 해당 열을 위→아래 순차 전환시키기 위한 마커
-  const [cascadeDay, setCascadeDay] = useState<number | null>(null)
+  // 요일/시간 일괄 변경 시 그 줄을 순서대로 펄스시키는 계단식 스태거 신호
+  const [cascade, setCascade] = useState<CascadeSignal | null>(null)
 
   const result = useMemo(() => recommend(people), [people])
 
@@ -33,6 +33,7 @@ export function EngineDemo() {
 
   const cycleCell = (d: number, h: number) => {
     const k = key(d, h)
+    setCascade(null)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -48,8 +49,8 @@ export function EngineDemo() {
 
   // 요일 헤더 클릭 — 그 요일 전체 칸을 한 번에 순환. MeetingPage.tsx와 동일한 규칙.
   const cycleDay = (d: number) => {
-    setCascadeDay(d)
-    window.setTimeout(() => setCascadeDay(null), HOURS.length * 20 + 250)
+    setCascade({ kind: 'day', line: d, nonce: Date.now() })
+    window.setTimeout(() => setCascade(null), HOURS.length * 25 + 450)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -69,7 +70,8 @@ export function EngineDemo() {
 
   // 시간 헤더 클릭 — 그 시간 전체 칸(모든 요일)을 한 번에 순환. cycleDay와 같은 규칙.
   const cycleHour = (h: number) => {
-    setCascadeDay(null)
+    setCascade({ kind: 'hour', line: h, nonce: Date.now() })
+    window.setTimeout(() => setCascade(null), DAYS.length * 25 + 450)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -154,7 +156,7 @@ export function EngineDemo() {
             onCycleCell={cycleCell}
             onCycleDay={cycleDay}
             onCycleHour={cycleHour}
-            cascadeDay={cascadeDay}
+            cascade={cascade}
           />
         </div>
 

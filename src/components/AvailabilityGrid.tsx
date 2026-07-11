@@ -1,9 +1,24 @@
-import { motion } from 'motion/react'
+import { useEffect } from 'react'
+import { motion, useAnimationControls } from 'motion/react'
 import { DAYS, HOURS, key, type CellState, type Person } from '../engine'
 import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
 
 type DisplayState = CellState | 'blocked'
+
+/**
+ * 헤더 일괄 변경 스태거 신호. kind='day'면 그 요일 열을 위→아래로,
+ * kind='hour'면 그 시간 행을 좌→우로 칸당 25ms 시간차를 두고 펄스시킨다.
+ * nonce는 같은 줄을 연속으로 눌러도 애니메이션이 매번 다시 재생되게 하는 트리거.
+ */
+export interface CascadeSignal {
+  kind: 'day' | 'hour'
+  line: number
+  nonce: number
+}
+
+// 칸당 스태거 간격(초) — 요구 사양 20~30ms 사이
+const CASCADE_STEP = 0.025
 
 interface Props {
   person: Person
@@ -14,8 +29,57 @@ interface Props {
   onCycleDay?: (d: number) => void
   /** 있으면 시간 라벨이 버튼이 되고, 누르면 그 시간 전체 칸(모든 요일)을 한 번에 순환 */
   onCycleHour?: (h: number) => void
-  /** 요일 일괄 변경 직후 그 열의 칸들이 위→아래로 칸당 20ms 딜레이로 순차 전환 */
-  cascadeDay?: number | null
+  /** 요일/시간 일괄 변경 시 그 줄을 순서대로 펄스시키는 계단식 스태거 신호 */
+  cascade?: CascadeSignal | null
+}
+
+// 개별 칸 — 헤더 일괄 변경 시 자기 순서(index)에 맞춰 살짝 커졌다 돌아오는 펄스를 재생한다.
+// 색 전환도 같은 시간차(transition-delay)를 줘서 "위→아래 / 좌→우로 번지는" 인상을 준다.
+function Cell({
+  d,
+  h,
+  row,
+  state,
+  onCycle,
+  cascade,
+}: {
+  d: number
+  h: number
+  row: number
+  state: DisplayState
+  onCycle: (d: number, h: number) => void
+  cascade?: CascadeSignal | null
+}) {
+  const controls = useAnimationControls()
+  const affected = !!cascade && (cascade.kind === 'day' ? cascade.line === d : cascade.line === h)
+  const index = cascade && cascade.kind === 'day' ? row : d
+  const delay = affected ? index * CASCADE_STEP : 0
+
+  useEffect(() => {
+    if (!affected) return
+    void controls.start({
+      scale: [1, 1.14, 1],
+      transition: { delay, duration: 0.34, times: [0, 0.45, 1], ease: 'easeInOut' },
+    })
+    // nonce가 바뀔 때마다(같은 줄 반복 클릭 포함) 펄스를 다시 재생
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cascade?.nonce])
+
+  return (
+    <td>
+      <motion.button
+        type="button"
+        data-testid={`cell-${d}-${h}`}
+        aria-label={`${DAYS[d]} ${hhmm(h)} ${STATE_LABEL[state]}`}
+        onClick={() => onCycle(d, h)}
+        animate={controls}
+        whileTap={press}
+        transition={pressSpring}
+        style={{ transitionDelay: `${Math.round(delay * 1000)}ms` }}
+        className={`block w-full h-[41px] rounded-[17px] border-2 cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[state]}`}
+      />
+    </td>
+  )
 }
 
 // 칸은 상태와 무관하게 크기 완전 고정 — 텍스트 없이 색으로만 구분한다.
@@ -47,7 +111,7 @@ export function AvailabilityGrid({
   hours = HOURS,
   onCycleDay,
   onCycleHour,
-  cascadeDay = null,
+  cascade = null,
 }: Props) {
   const cellState = (d: number, h: number): DisplayState => person.cells[key(d, h)] ?? 'blocked'
 
@@ -119,26 +183,17 @@ export function AvailabilityGrid({
                   </span>
                 )}
               </td>
-              {DAYS.map((_, d) => {
-                const s = cellState(d, h)
-                return (
-                  <td key={d}>
-                    <motion.button
-                      type="button"
-                      data-testid={`cell-${d}-${h}`}
-                      aria-label={`${DAYS[d]} ${hhmm(h)} ${STATE_LABEL[s]}`}
-                      onClick={() => onCycleCell(d, h)}
-                      whileTap={press}
-                      transition={pressSpring}
-                      style={{
-                        // 요일 일괄 변경: 위에서부터 칸당 20ms 순차 전환
-                        transitionDelay: cascadeDay === d ? `${row * 20}ms` : '0ms',
-                      }}
-                      className={`block w-full h-[41px] rounded-[17px] border-2 cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[s]}`}
-                    />
-                  </td>
-                )
-              })}
+              {DAYS.map((_, d) => (
+                <Cell
+                  key={d}
+                  d={d}
+                  h={h}
+                  row={row}
+                  state={cellState(d, h)}
+                  onCycle={onCycleCell}
+                  cascade={cascade}
+                />
+              ))}
             </tr>
             )
           })}

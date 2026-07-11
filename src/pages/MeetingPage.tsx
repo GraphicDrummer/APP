@@ -23,7 +23,7 @@ import { Footer } from '../components/Footer'
 import { AnimatePresence, motion } from 'motion/react'
 import { press, pressSpring, riseIn, spring } from '../lib/motion'
 import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '../components/ui'
-import { AvailabilityGrid } from '../components/AvailabilityGrid'
+import { AvailabilityGrid, type CascadeSignal } from '../components/AvailabilityGrid'
 import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
@@ -142,7 +142,7 @@ export function MeetingPage() {
   const [error, setError] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [copied, setCopied] = useState(false)
-  const [cascadeDay, setCascadeDay] = useState<number | null>(null)
+  const [cascade, setCascade] = useState<CascadeSignal | null>(null)
   const [view, setView] = useState<'adjust' | 'done' | null>(null)
   const [showGridHint, setShowGridHint] = useState(() => {
     try {
@@ -253,7 +253,7 @@ export function MeetingPage() {
   const cycleCell = (d: number, h: number) => {
     const k = `${d}-${h}`
     dismissGridHint()
-    setCascadeDay(null)
+    setCascade(null)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -269,8 +269,8 @@ export function MeetingPage() {
 
   const cycleDay = (d: number) => {
     dismissGridHint()
-    setCascadeDay(d)
-    window.setTimeout(() => setCascadeDay(null), hours.length * 20 + 250)
+    setCascade({ kind: 'day', line: d, nonce: Date.now() })
+    window.setTimeout(() => setCascade(null), hours.length * 25 + 450)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -290,7 +290,8 @@ export function MeetingPage() {
 
   const cycleHour = (h: number) => {
     dismissGridHint()
-    setCascadeDay(null)
+    setCascade({ kind: 'hour', line: h, nonce: Date.now() })
+    window.setTimeout(() => setCascade(null), 5 * 25 + 450)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -828,7 +829,7 @@ export function MeetingPage() {
                 hours={hours}
                 onCycleDay={cycleDay}
                 onCycleHour={cycleHour}
-                cascadeDay={cascadeDay}
+                cascade={cascade}
               />
             </div>
           )}
