@@ -28,14 +28,19 @@ export function ChipRow({
   // 마우스 드래그로도 스크롤되게 — 터치는 브라우저 네이티브 스크롤에 맡긴다
   const drag = useRef({ down: false, moved: false, startX: 0, startScroll: 0 })
 
-  // 선택된 칩이 보이도록 스크롤 — 최초 렌더 때 한 번만.
+  // 선택된 칩을 가로축 중앙으로 스크롤 — 최초 렌더 때 한 번만.
   // (매 클릭마다 재발동하면 자유 스크롤/드래그와 충돌해서 위치가 멋대로 튄다)
+  // 펼침 애니메이션 중 레이아웃이 늦게 잡힐 수 있어, 즉시 한 번 + 다음 프레임에 한 번 더 보정한다.
   useEffect(() => {
     const row = scroller.current
-    const chip = row?.querySelector<HTMLElement>(`[data-hour="${value}"]`)
-    if (row && chip) {
-      row.scrollTo({ left: chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2 })
+    if (!row) return
+    const center = () => {
+      const chip = row.querySelector<HTMLElement>(`[data-hour="${value}"]`)
+      if (chip) row.scrollTo({ left: chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2 })
     }
+    center()
+    const raf = requestAnimationFrame(center)
+    return () => cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

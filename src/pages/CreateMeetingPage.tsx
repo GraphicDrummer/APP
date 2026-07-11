@@ -24,6 +24,13 @@ const fmtDate = (iso: string) => {
   return `${Number(m)}/${Number(d)}`
 }
 
+// 줄/패널이 접히고 펼쳐지는 공통 애니메이션 (높이+페이드) — 기존 EditorPanel과 동일 규칙
+const collapse = {
+  initial: { opacity: 0, height: 0 },
+  animate: { opacity: 1, height: 'auto' as const },
+  exit: { opacity: 0, height: 0 },
+} as const
+
 type SlotKey = 'title' | 'dates' | 'hours' | 'duration' | 'deadline'
 
 // 문장 속 밑줄 친 탭 영역 — 누르면 그 자리 아래로 입력 UI가 펼쳐진다
@@ -129,6 +136,8 @@ export function CreateMeetingPage() {
   // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"비는 시간")로 보여준다.
   const [hoursTouched, setHoursTouched] = useState(false)
   const [durationTouched, setDurationTouched] = useState(false)
+  // 마감 줄("답변은 …까지.")을 보여줄지 — "마감 없음"이면 줄이 접히고 "+ 마감 기한 있음"으로 대체
+  const [deadlineShown, setDeadlineShown] = useState(true)
   
   const [link, setLink] = useState<string | null>(null)
   const [adminLink, setAdminLink] = useState<string | null>(null)
@@ -375,164 +384,197 @@ export function CreateMeetingPage() {
         </Enter>
 
         <Enter delay={0.08}>
-          {/* 문장형 폼 — 각 [ ]는 밑줄 친 탭 영역, 누르면 그 자리에서 입력 UI가 펼쳐진다 */}
-          <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2.5 text-[18px] font-bold leading-[1.85] tracking-[-0.3px]">
-            <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')}>
-              {title.trim() || '새로운'}
-            </Slot>
-            <AnimatePresence initial={false}>
-              {activeSlot === 'title' && (
-                <EditorPanel key="ed-title">
-                  <TextInput
-                    data-testid="title"
-                    autoFocus
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="예: 야채 정기 회의"
-                  />
-                </EditorPanel>
-              )}
-            </AnimatePresence>
-
-            <span>회의,</span>
-
-            <Slot testId="slot-dates" filled={!!(dateStart && dateEnd)} active={activeSlot === 'dates'} onToggle={() => toggleSlot('dates')}>
-              {dateStart && dateEnd ? `${fmtDate(dateStart)}~${fmtDate(dateEnd)}` : '이 날짜들'}
-            </Slot>
-            <AnimatePresence initial={false}>
-              {activeSlot === 'dates' && (
-                <EditorPanel key="ed-dates">
-                  <div className="flex gap-3">
-                    <LabeledRow label="시작" className="flex-1">
-                      <TextInput
-                        data-testid="date-start"
-                        type="date"
-                        className="flex-1 min-w-0"
-                        value={dateStart}
-                        onChange={(e) => setDateStart(e.target.value)}
-                      />
-                    </LabeledRow>
-                    <LabeledRow label="종료" className="flex-1">
-                      <TextInput
-                        data-testid="date-end"
-                        type="date"
-                        className="flex-1 min-w-0"
-                        value={dateEnd}
-                        onChange={(e) => setDateEnd(e.target.value)}
-                      />
-                    </LabeledRow>
-                  </div>
-                  <p className="pl-1 pt-2 text-[11.5px] font-bold text-ink-muted/60">
-                    이 기간 안에서 다들 가능한 시간을 찾아드려요
-                  </p>
-                </EditorPanel>
-              )}
-            </AnimatePresence>
-
-            <span>중</span>
-
-            <Slot testId="slot-hours" filled={hoursTouched} active={activeSlot === 'hours'} onToggle={() => toggleSlot('hours')}>
-              {hoursTouched ? `${hhmm(hourStart)}~${hhmm(hourEnd)}` : '이 시간대'}
-            </Slot>
-            <AnimatePresence initial={false}>
-              {activeSlot === 'hours' && (
-                <EditorPanel key="ed-hours">
-                  <HourRangePicker
-                    start={hourStart}
-                    end={hourEnd}
-                    onChange={(s, e) => {
-                      setHourStart(s)
-                      setHourEnd(e)
-                      setHoursTouched(true)
-                    }}
-                  />
-                </EditorPanel>
-              )}
-            </AnimatePresence>
-
-            <span>사이에서</span>
-
-            <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')}>
-              {durationTouched ? `${durationSlots}시간` : '비는 시간'}
-            </Slot>
-            <AnimatePresence initial={false}>
-              {activeSlot === 'duration' && (
-                <EditorPanel key="ed-duration">
-                  <Field label="소요 시간">
-                    <Select
-                      data-testid="duration"
-                      value={durationSlots}
-                      onChange={(e) => {
-                        setDurationSlots(Number(e.target.value))
-                        setDurationTouched(true)
-                      }}
-                    >
-                      <option value={1}>1시간</option>
-                      <option value={2}>2시간</option>
-                      <option value={3}>3시간</option>
-                    </Select>
-                  </Field>
-                </EditorPanel>
-              )}
-            </AnimatePresence>
-
-            <span>을 찾을게요.</span>
-
-            {/* 다음 문장을 새 줄에서 시작 — flex-wrap 강제 줄바꿈 */}
-            <span className="w-full" aria-hidden />
-
-            <span>답변은</span>
-            <Slot
-              testId="slot-deadline"
-              filled={deadlineOpen && !!deadlineDate}
-              active={activeSlot === 'deadline'}
-              onToggle={() => toggleSlot('deadline')}
-            >
-              {deadlineOpen && deadlineDate ? `${fmtDate(deadlineDate)} ${hhmm(deadlineHour)}` : '이 때'}
-            </Slot>
-            <span>까지.</span>
-            <AnimatePresence initial={false}>
-              {activeSlot === 'deadline' && (
-                <EditorPanel key="ed-deadline">
-                  <Field label="응답 마감 날짜">
+          {/* 문장형 폼 — 데이터 절 단위로 줄을 나눈다. 각 [ ]는 밑줄 친 탭 영역,
+              누르면 그 줄 아래로 입력 UI가 펼쳐진다 */}
+          <div className="text-[18px] font-bold leading-[1.5] tracking-[-0.3px] space-y-1.5">
+            {/* 새로운 회의, */}
+            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
+              <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')}>
+                {title.trim() || '새로운'}
+              </Slot>
+              <span>회의,</span>
+              <AnimatePresence initial={false}>
+                {activeSlot === 'title' && (
+                  <EditorPanel key="ed-title">
                     <TextInput
-                      data-testid="deadline-date"
-                      type="date"
-                      aria-label="마감 날짜"
-                      value={deadlineDate}
-                      onChange={(e) => {
-                        setDeadlineDate(e.target.value)
-                        setDeadlineOpen(!!e.target.value)
+                      data-testid="title"
+                      autoFocus
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="예: 야채 정기 회의"
+                    />
+                  </EditorPanel>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* 이 날짜들 중 */}
+            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
+              <Slot testId="slot-dates" filled={!!(dateStart && dateEnd)} active={activeSlot === 'dates'} onToggle={() => toggleSlot('dates')}>
+                {dateStart && dateEnd ? `${fmtDate(dateStart)}~${fmtDate(dateEnd)}` : '이 날짜들'}
+              </Slot>
+              <span>중</span>
+              <AnimatePresence initial={false}>
+                {activeSlot === 'dates' && (
+                  <EditorPanel key="ed-dates">
+                    <div className="flex gap-3">
+                      <LabeledRow label="시작" className="flex-1">
+                        <TextInput
+                          data-testid="date-start"
+                          type="date"
+                          className="flex-1 min-w-0"
+                          value={dateStart}
+                          onChange={(e) => setDateStart(e.target.value)}
+                        />
+                      </LabeledRow>
+                      <LabeledRow label="종료" className="flex-1">
+                        <TextInput
+                          data-testid="date-end"
+                          type="date"
+                          className="flex-1 min-w-0"
+                          value={dateEnd}
+                          onChange={(e) => setDateEnd(e.target.value)}
+                        />
+                      </LabeledRow>
+                    </div>
+                    <p className="pl-1 pt-2 text-[11.5px] font-bold text-ink-muted/60">
+                      이 기간 안에서 다들 가능한 시간을 찾아드려요
+                    </p>
+                  </EditorPanel>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* 이 시간대 사이에서 */}
+            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
+              <Slot testId="slot-hours" filled={hoursTouched} active={activeSlot === 'hours'} onToggle={() => toggleSlot('hours')}>
+                {hoursTouched ? `${hhmm(hourStart)}~${hhmm(hourEnd)}` : '이 시간대'}
+              </Slot>
+              <span>사이에서</span>
+              <AnimatePresence initial={false}>
+                {activeSlot === 'hours' && (
+                  <EditorPanel key="ed-hours">
+                    <HourRangePicker
+                      start={hourStart}
+                      end={hourEnd}
+                      onChange={(s, e) => {
+                        setHourStart(s)
+                        setHourEnd(e)
+                        setHoursTouched(true)
                       }}
                     />
-                  </Field>
-                  {deadlineDate && (
-                    <div className="mt-3">
-                      <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
-                        마감 시각
-                      </span>
-                      <ChipRow
-                        testId="deadline-hour"
-                        options={DEADLINE_HOURS}
-                        value={deadlineHour}
-                        onChange={setDeadlineHour}
-                      />
-                    </div>
-                  )}
-                  {deadlineOpen && deadlineDate && (
-                    <button
-                      type="button"
-                      data-testid="clear-deadline"
-                      onClick={() => {
-                        setDeadlineOpen(false)
-                        setDeadlineDate('')
-                      }}
-                      className="mt-3 text-[12px] font-bold text-ink-muted/70 underline cursor-pointer"
+                  </EditorPanel>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* 비는 시간을 찾을게요. */}
+            <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
+              <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')}>
+                {durationTouched ? `${durationSlots}시간` : '비는 시간'}
+              </Slot>
+              <span>을 찾을게요.</span>
+              <AnimatePresence initial={false}>
+                {activeSlot === 'duration' && (
+                  <EditorPanel key="ed-duration">
+                    <Field label="소요 시간">
+                      <Select
+                        data-testid="duration"
+                        value={durationSlots}
+                        onChange={(e) => {
+                          setDurationSlots(Number(e.target.value))
+                          setDurationTouched(true)
+                        }}
+                      >
+                        <option value={1}>1시간</option>
+                        <option value={2}>2시간</option>
+                        <option value={3}>3시간</option>
+                      </Select>
+                    </Field>
+                  </EditorPanel>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* 답변은 이 때까지. — 마감이 있을 때만 보이는 줄 */}
+            <AnimatePresence initial={false}>
+              {deadlineShown && (
+                <motion.div key="dl-line" {...collapse} transition={spring} className="overflow-hidden">
+                  <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
+                    <span>답변은</span>
+                    <Slot
+                      testId="slot-deadline"
+                      filled={deadlineOpen && !!deadlineDate}
+                      active={activeSlot === 'deadline'}
+                      onToggle={() => toggleSlot('deadline')}
                     >
-                      마감 없음으로
-                    </button>
-                  )}
-                </EditorPanel>
+                      {deadlineOpen && deadlineDate ? `${fmtDate(deadlineDate)} ${hhmm(deadlineHour)}` : '이 때'}
+                    </Slot>
+                    <span>까지.</span>
+                    <AnimatePresence initial={false}>
+                      {activeSlot === 'deadline' && (
+                        <EditorPanel key="ed-deadline">
+                          <Field label="응답 마감 날짜">
+                            <TextInput
+                              data-testid="deadline-date"
+                              type="date"
+                              aria-label="마감 날짜"
+                              value={deadlineDate}
+                              onChange={(e) => {
+                                setDeadlineDate(e.target.value)
+                                setDeadlineOpen(!!e.target.value)
+                              }}
+                            />
+                          </Field>
+                          {deadlineDate && (
+                            <div className="mt-3">
+                              <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
+                                마감 시각
+                              </span>
+                              <ChipRow
+                                testId="deadline-hour"
+                                options={DEADLINE_HOURS}
+                                value={deadlineHour}
+                                onChange={setDeadlineHour}
+                              />
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            data-testid="clear-deadline"
+                            onClick={() => {
+                              setActiveSlot(null)
+                              setDeadlineOpen(false)
+                              setDeadlineDate('')
+                              setDeadlineShown(false)
+                            }}
+                            className="mt-3 text-[12px] font-bold text-ink-muted/70 underline cursor-pointer"
+                          >
+                            마감 없음으로
+                          </button>
+                        </EditorPanel>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* 마감을 없앤 상태 — 다시 켤 수 있는 옵션 (같은 접힘/펼침 애니메이션) */}
+            <AnimatePresence initial={false}>
+              {!deadlineShown && (
+                <motion.div key="dl-toggle" {...collapse} transition={spring} className="overflow-hidden">
+                  <motion.button
+                    type="button"
+                    data-testid="add-deadline"
+                    onClick={() => setDeadlineShown(true)}
+                    whileTap={press}
+                    transition={pressSpring}
+                    className="text-[13px] font-bold text-primary cursor-pointer"
+                  >
+                    + 마감 기한 있음
+                  </motion.button>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>

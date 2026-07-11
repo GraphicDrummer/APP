@@ -1,4 +1,4 @@
-# 딱. (DDACK) 개발 일지 — 완전판
+# 딱. (TTAK) 개발 일지 — 완전판
 
 > 2026-07-03 ~ 2026-07-06. 개발 지식이 전혀 없는 1인이 Claude Code와 함께
 > 아이디어(HTML 데모 + 마스터 문서)에서 프로덕션 배포까지 간 전 과정의 상세 기록.
@@ -132,7 +132,7 @@ Node.js 자체가 없었다. 해결 과정:
   bg #f5f6f8 · ink #1a2028 · muted #6b7684 · line #e5e8ec · primary #3182f6 ·
   라운드 15px · 카드 그림자 2종
 - Pretendard Variable(CDN), 3단계 탭(정보/조율/확정, 현재 단계 흰 알약),
-  공용 컴포넌트(ui.tsx), "DDACK. — PERFECT SLOT ONLY" 푸터
+  공용 컴포넌트(ui.tsx), "TTAK. — PERFECT SLOT ONLY" 푸터
 
 ### 3-2. 모션 (`25f8b47`)
 
