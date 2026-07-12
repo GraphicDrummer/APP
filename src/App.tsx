@@ -12,7 +12,7 @@ function App() {
       <BrowserRouter>
         <SplashScreen>
           <Routes>
-            {/* 주최자: 모임 생성 → 공유 링크 발급 */}
+            {/* 주최자: 회의 생성 → 공유 링크 발급 */}
             <Route path="/" element={<CreateMeetingPage />} />
             {/* 참여자: 공유 링크로 진입해 가용 시간 입력.
                 같은 경로에 ?adminKey=... 쿼리가 있고 검증에 성공하면 관리자 모드로 전환된다

@@ -255,7 +255,7 @@ export function CreateMeetingPage() {
       try {
         await navigator.share({
           title: `딱. — ${title}`,
-          text: `[딱.] "${title}" 모임에 초대해요! 되는 시간을 칠해주세요.`,
+          text: `[딱.] "${title}" 회의에 초대해요! 되는 시간을 칠해주세요.`,
           url: link,
         })
       } catch {
@@ -281,7 +281,7 @@ export function CreateMeetingPage() {
       try {
         await navigator.share({
           title: `딱. — ${title}`,
-          text: `[딱.] "${title}" 모임 관리자 링크예요. 잃어버리면 다시 찾을 수 없으니 꼭 보관해두세요!`,
+          text: `[딱.] "${title}" 회의 관리자 링크예요. 잃어버리면 다시 찾을 수 없으니 꼭 보관해두세요!`,
           url: adminLink,
         })
       } catch {
@@ -314,7 +314,7 @@ export function CreateMeetingPage() {
                 <path d="M5 12.5 10 17.5 19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </motion.div>
-            <p className="text-[13px] font-bold text-ink-muted mt-4">모임이 만들어졌어요</p>
+            <p className="text-[13px] font-bold text-ink-muted mt-4">회의가 만들어졌어요</p>
             <h1 className="text-[22.5px] font-black tracking-[-1.1px] mt-1">{title}</h1>
             <p className="text-[13px] text-ink-muted mt-1">
               {dateStart} ~ {dateEnd} · {durationSlots}시간
@@ -353,7 +353,7 @@ export function CreateMeetingPage() {
 
           <Enter delay={0.10} className={`${cardCls} p-5 mt-4 border-2 border-primary/20`}>
             <CardLabel>👑 관리자 링크 (주최자 보관용)</CardLabel>
-            <p className="text-[11px] text-ink-muted/80 mt-1">이 링크로 접속하면 별도의 로그인 없이 모임 수정 및 응답 마감이 가능해요!</p>
+            <p className="text-[11px] text-ink-muted/80 mt-1">이 링크로 접속하면 별도의 로그인 없이 회의 수정 및 응답 마감이 가능해요!</p>
             <div className="mt-3 bg-primary/5 rounded-full px-3 py-2.5 overflow-hidden border border-primary/10">
               <p className="text-[13px] font-bold text-primary truncate">
                 {shortAdminLink}
@@ -783,7 +783,7 @@ export function CreateMeetingPage() {
             breathe={hintActive && !saving}
             className="w-full"
           >
-            {saving ? '만드는 중…' : '모임 생성하기'}
+            {saving ? '만드는 중…' : '회의 생성하기'}
           </Button>
         </div>
 

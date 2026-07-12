@@ -95,7 +95,7 @@ export async function getMeeting(id: string): Promise<MeetingRow | null> {
   return data
 }
 
-/** 공유 링크의 코드로 모임 조회 (참여자용 — admin_key는 응답에 없다) */
+/** 공유 링크의 코드로 회의 조회 (참여자용 — admin_key는 응답에 없다) */
 export async function getMeetingByCode(code: string): Promise<MeetingRow | null> {
   const { data, error } = await supabase
     .from('meetings')
@@ -130,11 +130,11 @@ export interface AdminUpdateMeetingInfoInput {
   durationSlots: number
   /** ISO 8601, null이면 마감 없음 */
   deadline: string | null
-  /** 모임 장소, null이면 미지정 */
+  /** 회의 장소, null이면 미지정 */
   location: string | null
 }
 
-/** 관리자 전용 — 모임 정보 수정. admin_key가 맞는 행만 DB에서 실제로 갱신된다 */
+/** 관리자 전용 — 회의 정보 수정. admin_key가 맞는 행만 DB에서 실제로 갱신된다 */
 export async function adminUpdateMeetingInfo(
   shareCode: string,
   adminKey: string,

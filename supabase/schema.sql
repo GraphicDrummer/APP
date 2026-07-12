@@ -1,14 +1,14 @@
 -- 딱 — 데이터 저장 스키마 (마스터 문서 3.4 데이터 모델)
 -- Supabase 대시보드 → SQL Editor에 전체를 붙여넣고 Run 하세요.
 
--- 모임
+-- 회의
 create table public.meetings (
   id             uuid primary key default gen_random_uuid(),
   title          text not null,
   organizer_name text not null,
   -- 후보 날짜 범위. '[2026-07-06,2026-07-10]' 형태(양끝 포함)로 저장한다.
   date_range     daterange not null,
-  -- 모임 길이 — 1시간 슬롯 몇 칸짜리인지
+  -- 회의 길이 — 1시간 슬롯 몇 칸짜리인지
   duration_slots integer not null default 1 check (duration_slots >= 1),
   -- 설문 시간 범위. hour_end는 배타적 끝(09~18이면 마지막 슬롯 시작 17:00)
   hour_start     integer not null default 9 check (hour_start >= 0 and hour_start <= 23),
@@ -16,9 +16,9 @@ create table public.meetings (
   constraint meetings_hour_range check (hour_end > hour_start),
   -- 참여자 응답 마감 시각 (없으면 무기한)
   deadline       timestamptz,
-  -- 확정된 모임 시간 (null이면 아직 미확정)
+  -- 확정된 회의 시간 (null이면 아직 미확정)
   confirmed_slot timestamptz,
-  -- 모임 장소 (선택 입력, null이면 미지정)
+  -- 회의 장소 (선택 입력, null이면 미지정)
   location       text,
   -- 공유 링크(/m/:code)용 추측 불가능한 짧은 코드 — 참여자용, 관리 권한 없음
   share_code     text not null unique,

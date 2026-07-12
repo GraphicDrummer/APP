@@ -472,7 +472,7 @@ export function MeetingPage() {
   if (notFound) {
     return (
       <div className="p-8 text-center">
-        <p className="text-lg font-extrabold">모임을 찾을 수 없어요</p>
+        <p className="text-lg font-extrabold">회의을 찾을 수 없어요</p>
         <p className="text-sm text-neutral-500 mt-1">リンク가 정확한지 확인해주세요.</p>
       </div>
     )
@@ -671,7 +671,7 @@ export function MeetingPage() {
                   transition={spring}
                   className={`${cardCls} p-4 space-y-3`}
                 >
-                  <Field label="모임 제목">
+                  <Field label="회의 제목">
                     <TextInput
                       data-testid="edit-title"
                       value={editTitle}
