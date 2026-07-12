@@ -136,7 +136,7 @@ function KakaoIcon() {
 
 function CardLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[12px] font-black tracking-[0.6px] uppercase text-ink-muted">{children}</p>
+    <p className="font-galmuri11 text-[12px] font-black tracking-[0.6px] uppercase text-ink-muted">{children}</p>
   )
 }
 
@@ -445,7 +445,7 @@ export function CreateMeetingPage() {
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
         {/* 앱 첫 진입 로고 — 순수 CSS 등장 애니메이션(index.css의 animate-logo-in), motion 불필요 */}
         <p
-          className="animate-logo-in pl-0.5 text-[13px] font-black tracking-[0.5px] text-ink-muted/70"
+          className="animate-logo-in pl-0.5 font-galmuri9 text-[13px] font-black tracking-[0.5px] text-ink-muted/70"
           aria-hidden
         >
           딱<span className="text-primary">.</span>
@@ -455,7 +455,7 @@ export function CreateMeetingPage() {
             <h1 className="text-[26px] font-black tracking-[-1.3px] leading-tight">
               새로운 회의를 시작해요<span className="text-primary">.</span>
             </h1>
-            <p className="text-[13px] text-ink-muted mt-1.5">
+            <p className="font-galmuri11 text-[13px] text-ink-muted mt-1.5">
               밑줄 친 곳을 눌러 채워주세요.
             </p>
           </header>
@@ -464,7 +464,7 @@ export function CreateMeetingPage() {
         <Enter delay={0.08}>
           {/* 문장형 폼 — 데이터 절 단위로 줄을 나눈다. 각 [ ]는 밑줄 친 탭 영역,
               누르면 그 줄 아래로 입력 UI가 펼쳐진다 */}
-          <div className="text-[18px] font-bold leading-[1.5] tracking-[-0.3px] space-y-1.5">
+          <div className="font-galmuri11 text-[17px] font-bold leading-[1.5] tracking-[-0.3px] space-y-1.5">
             {/* 새로운 회의, */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')} hintIndex={0} hintActive={hintActive}>
@@ -662,7 +662,7 @@ export function CreateMeetingPage() {
                     onClick={() => setDeadlineShown(true)}
                     whileTap={press}
                     transition={pressSpring}
-                    className="text-[13px] font-bold text-primary cursor-pointer"
+                    className="font-galmuri11 text-[13px] font-bold text-primary cursor-pointer"
                   >
                     + 마감 기한 있음
                   </motion.button>
@@ -737,14 +737,14 @@ export function CreateMeetingPage() {
                   onClick={() => setLocationOpen(true)}
                   whileTap={press}
                   transition={pressSpring}
-                  className="text-[13px] font-bold text-primary cursor-pointer"
+                  className="font-galmuri11 text-[13px] font-bold text-primary cursor-pointer"
                 >
                   + 장소 (선택)
                 </motion.button>
               ) : (
                 <motion.div initial={riseIn.initial} animate={riseIn.animate} transition={spring}>
                   <div className="flex items-center justify-between pl-1 pb-1.5">
-                    <span className="text-[13px] font-bold text-ink-muted">장소 (선택)</span>
+                    <span className="font-galmuri11 text-[13px] font-bold text-ink-muted">장소 (선택)</span>
                     <button
                       type="button"
                       onClick={() => {

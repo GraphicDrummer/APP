@@ -81,7 +81,7 @@ export function StepTabs({
           {STEPS.map((label, i) => {
             const active = i === current
             const canClick = !!onStepClick && !!clickable[i] && !active
-            const cls = `flex-1 py-2.5 rounded-[22px] text-[13px] font-black text-center ${
+            const cls = `flex-1 py-2.5 rounded-[22px] font-galmuri9 text-[13px] font-black text-center ${
               active ? 'bg-surface border-2 border-line shadow-pill text-ink' : 'text-ink-muted/60'
             }`
             return canClick ? (

@@ -10,7 +10,7 @@ import { press, pressSpring, spring, screenIn } from '../lib/motion'
 
 /** 입력창/셀렉트 공통 — 흰 배경, 15px 라운드, 진한 픽셀 테두리 */
 export const fieldCls =
-  'w-full rounded-field border-2 border-line bg-surface shadow-card px-4 py-3 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary'
+  'w-full rounded-field border-2 border-line bg-surface shadow-card px-4 py-3 font-galmuri11 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary'
 
 /** 카드 표면 */
 export const cardCls = 'bg-surface border-2 border-line rounded-card shadow-card'
@@ -56,7 +56,7 @@ export function Button({ variant = 'primary', className = '', breathe = false, .
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`rounded-field border-2 border-line px-4 py-3.5 text-[15px] font-extrabold cursor-pointer disabled:opacity-50 ${BUTTON_VARIANT[variant]} ${className}`}
+      className={`rounded-field border-2 border-line px-4 py-3.5 font-galmuri11 text-[17px] font-extrabold cursor-pointer disabled:opacity-50 ${BUTTON_VARIANT[variant]} ${className}`}
       {...rest}
     />
   )
@@ -98,7 +98,7 @@ export function Select({ className = '', ...rest }: SelectHTMLAttributes<HTMLSel
 export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block flex-1">
-      <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">{label}</span>
+      <span className="block pl-1 pb-1.5 font-galmuri11 text-[13px] font-bold text-ink-muted">{label}</span>
       {children}
     </label>
   )
@@ -116,7 +116,7 @@ export function LabeledRow({
 }) {
   return (
     <div className={`flex items-center gap-1.5 min-w-0 ${className}`}>
-      <span className="flex-none text-[11px] font-black text-ink-muted/60">{label}</span>
+      <span className="flex-none font-galmuri11 text-[11px] font-black text-ink-muted/60">{label}</span>
       {children}
     </div>
   )
@@ -161,7 +161,7 @@ export function RoleBadge({
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`rounded-full border-2 border-line px-2 py-0.5 text-[10px] font-black cursor-pointer ${
+      className={`rounded-full border-2 border-line px-2 py-0.5 font-galmuri9 text-[10px] font-black cursor-pointer ${
         role === 'required' ? required : 'bg-surface-sub text-ink-muted'
       }`}
       {...rest}
@@ -197,12 +197,12 @@ export function PersonChip({
         <button
           type="button"
           onClick={onSelect}
-          className="text-[13px] font-bold text-ink cursor-pointer"
+          className="font-galmuri11 text-[13px] font-bold text-ink cursor-pointer"
         >
           {name}
         </button>
       ) : (
-        <span className="text-[13px] font-bold text-ink">{name}</span>
+        <span className="font-galmuri11 text-[13px] font-bold text-ink">{name}</span>
       )}
       <RoleBadge role={role} onClick={onToggleRole} />
       {onRemove && (
@@ -210,7 +210,7 @@ export function PersonChip({
           type="button"
           onClick={onRemove}
           aria-label={`${name} 삭제`}
-          className="w-[15px] h-[15px] rounded-full bg-surface-sub/50 text-ink-muted text-[9px] leading-[15px] text-center cursor-pointer"
+          className="w-[15px] h-[15px] rounded-full bg-surface-sub/50 text-ink-muted font-galmuri9 text-[9px] leading-[15px] text-center cursor-pointer"
         >
           ✕
         </button>

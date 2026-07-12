@@ -48,7 +48,7 @@ function RoleTab({
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`rounded-full px-1.5 py-0.5 text-[9px] font-black cursor-pointer whitespace-nowrap ${
+      className={`rounded-full px-1.5 py-0.5 font-galmuri9 text-[9px] font-black cursor-pointer whitespace-nowrap ${
         active ? 'bg-white/20 text-white' : role === 'required' ? 'bg-primary/10 text-primary' : 'bg-surface-sub text-ink-muted'
       }`}
     >
@@ -79,7 +79,7 @@ export function PersonTabs({ people, selected, onSelect, onToggleRole, hintFirst
               onClick={() => onSelect(i)}
               whileTap={press}
               transition={pressSpring}
-              className={`text-[13px] font-black cursor-pointer whitespace-nowrap ${
+              className={`font-galmuri11 text-[13px] font-black cursor-pointer whitespace-nowrap ${
                 active ? 'text-white' : 'text-ink'
               }`}
             >

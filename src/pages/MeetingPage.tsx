@@ -660,7 +660,7 @@ export function MeetingPage() {
                   onClick={startEditing}
                   whileTap={press}
                   transition={pressSpring}
-                  className="text-[12px] font-bold text-primary cursor-pointer"
+                  className="font-galmuri11 text-[12px] font-bold text-primary cursor-pointer"
                 >
                   정보 수정
                 </motion.button>
@@ -745,7 +745,7 @@ export function MeetingPage() {
                       onClick={() => setEditDeadlineOpen(true)}
                       whileTap={press}
                       transition={pressSpring}
-                      className="text-[13px] font-bold text-primary cursor-pointer"
+                      className="font-galmuri11 text-[13px] font-bold text-primary cursor-pointer"
                     >
                       + 응답 마감 추가하기
                     </motion.button>
@@ -827,7 +827,7 @@ export function MeetingPage() {
                   : `아직 ${pendingNames.length}명이 고민 중이에요 🐭`}
               </p>
             )}
-            <p className="text-[13px] font-bold text-ink-muted px-0.5">
+            <p className="font-galmuri11 text-[13px] font-bold text-ink-muted px-0.5">
               내 이름을 누르고, 되는 시간을 칠해주세요. 애매하면 노랑으로!
             </p>
           </div>
