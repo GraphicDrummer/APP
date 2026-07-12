@@ -488,7 +488,7 @@ export function MeetingPage() {
   if (notFound) {
     return (
       <div className="p-8 text-center">
-        <p className="text-lg font-extrabold">모임을 찾을 수 없어요</p>
+        <p className="text-lg font-extrabold">회의을 찾을 수 없어요</p>
         <p className="text-sm text-neutral-500 mt-1">リンク가 정확한지 확인해주세요.</p>
       </div>
     )
@@ -543,7 +543,7 @@ export function MeetingPage() {
               </motion.div>
               <div>
                 <p className="text-[11px] font-black tracking-[2.2px] uppercase text-white/70">
-                  MEETING CONFIRMED
+                  {withCharacterIcons('탕탕! 회의 소집 완료 🐯')}
                 </p>
                 <p className="text-[15px] font-bold text-white/90 mt-1">{withCharacterIcons(meeting.title)}</p>
               </div>
@@ -695,7 +695,7 @@ export function MeetingPage() {
                   transition={spring}
                   className={`${cardCls} p-4 space-y-3`}
                 >
-                  <Field label="모임 제목">
+                  <Field label="회의 제목">
                     <TextInput
                       data-testid="edit-title"
                       value={editTitle}
@@ -714,7 +714,7 @@ export function MeetingPage() {
                       data-testid="edit-location"
                       value={editLocation}
                       onChange={(e) => setEditLocation(e.target.value)}
-                      placeholder="예: 강남역 3번 출구"
+                      placeholder="예: 3층 세미나실"
                     />
                   </Field>
                   <div className="flex gap-3">
@@ -850,12 +850,12 @@ export function MeetingPage() {
                 <p className="text-[12.5px] font-bold text-soft-ink">
                   {pendingRows.length === 1
                     ? `모두가 ${pendingRows[0].name}님만 기다리고 있어요!`
-                    : `아직 ${pendingRows.length}명이 고민 중이에요`}
+                    : `아직 ${pendingRows.length}명의 동료들이 눈치 보는 중 👀`}
                 </p>
               </div>
             )}
             <p className="font-galmuri11 text-[13px] font-bold text-ink-muted px-0.5">
-              내 이름을 누르고, 되는 시간을 칠해주세요. 애매하면 주황으로!
+              내 이름을 누르고, 되는 날만 콕 집어 모두를 구원해 주세요! 애매하면 주황으로!
             </p>
           </div>
           <PersonTabs

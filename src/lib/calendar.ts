@@ -7,7 +7,7 @@ export interface CalendarEvent {
   /** 길이 (시간 단위) */
   durationHours: number
   description?: string
-  /** 모임 장소 (선택) */
+  /** 회의 장소 (선택) */
   location?: string
 }
 

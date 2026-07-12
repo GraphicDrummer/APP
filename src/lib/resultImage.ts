@@ -46,7 +46,7 @@ export function downloadResultPng({ title, organizer, timeText }: ResultImageInp
 
   ctx.fillStyle = '#6f6f6f'
   ctx.font = font(20, 600)
-  ctx.fillText(`${organizer} 님의 모임`, W / 2, 180)
+  ctx.fillText(`${organizer} 님의 회의`, W / 2, 180)
 
   ctx.fillStyle = '#303030'
   ctx.font = font(34, 800)

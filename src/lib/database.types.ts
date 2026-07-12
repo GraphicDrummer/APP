@@ -20,9 +20,9 @@ export type MeetingRow = {
   hour_end: number
   /** ISO 8601, null이면 마감 없음 */
   deadline: string | null
-  /** 확정된 모임 시간 (ISO 8601). null이면 아직 미확정 */
+  /** 확정된 회의 시간 (ISO 8601). null이면 아직 미확정 */
   confirmed_slot: string | null
-  /** 모임 장소 (선택 입력). null이면 미지정 */
+  /** 회의 장소 (선택 입력). null이면 미지정 */
   location: string | null
   /** 공유 링크(/m/:code)용 짧은 코드 — 참여자용, 관리 권한 없음 */
   share_code: string
@@ -78,7 +78,7 @@ export type Database = {
     }
     Views: Record<string, never>
     Functions: {
-      // admin_key 검증 — 맞으면 admin_key까지 채워진 모임 1건, 아니면 빈 배열
+      // admin_key 검증 — 맞으면 admin_key까지 채워진 회의 1건, 아니면 빈 배열
       verify_admin_key: {
         Args: { p_share_code: string; p_admin_key: string }
         Returns: MeetingRow[]

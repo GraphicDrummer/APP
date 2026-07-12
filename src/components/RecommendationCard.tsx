@@ -123,10 +123,10 @@ export function RecommendationCard({
           <motion.div key="confirmed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             <HeroCard
               tone="confirm"
-              label="확정됨"
+              label="확정! 그럼 그때 보세!"
               day={`${WEEKDAYS_KO[confirmedDate.getDay()]}요일`}
               time={hhmm(confirmedDate.getHours())}
-              chips={[`전원 참석 ${total}명`, '캘린더는 확정 탭에서']}
+              chips={[`전원 참석 ${total}명`, '모두의 조율 완료! 딱 맞는 시간을 찾았으니 캘린더에 저장해 보세요.']}
               buttonText={canManage ? '확정 취소하기' : undefined}
               buttonTestId={canManage ? 'unconfirm' : undefined}
               onButton={canManage ? () => onUnconfirm?.() : undefined}
@@ -162,13 +162,13 @@ export function RecommendationCard({
                 ⊘
               </span>
               <p className="text-[11px] font-black tracking-[2.2px] uppercase text-danger">
-                NO PERFECT TIME
+                🚨 비상! 완벽한 날이 없습니다.
               </p>
             </div>
             <p className="text-[13px] font-bold text-ink-muted mt-3.5 leading-[1.6]">
-              모두가 가능한 시간이 없네요.
+              누군가의 한 걸음 양보가 시급합니다.
               <br />
-              <span className="text-ink">차선책을 제안해드려요:</span>
+              <span className="text-ink">차선책을 확인해 보세요!</span>
             </p>
             <div className="mt-4 flex flex-col gap-2.5">
               {options.map(({ label, w, cost }, i) => (
@@ -198,7 +198,7 @@ export function RecommendationCard({
                   <CharacterIcon data-testid="bottleneck-character" code={bottleneckCharacter} size={24} />
                   <p className="text-[11px] font-bold text-soft-ink leading-[1.6]">
                     💡 <b className="font-black">{R.bottleneck}</b>님만 시간을 내주시면 가능한
-                    시간이 <b className="font-black">{R.bestGain}</b>개 더 생겨요!
+                    시간이 <b className="font-black">{R.bestGain}</b>개 더 생긴다는 건 절대 비밀입니다...! 🤫
                   </p>
                 </Rise>
               )}

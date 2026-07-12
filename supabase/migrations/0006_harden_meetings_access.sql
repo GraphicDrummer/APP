@@ -2,7 +2,7 @@
 --
 -- 문제: 지금까지 meetings 테이블 RLS가 `using (true)`라서, anon 키만 있으면
 -- (프론트엔드 번들에 그대로 박혀 있는, 원래 공개돼도 되는 키) 누구나
--- `select admin_key from meetings` 로 모든 모임의 관리자 비밀값을 그대로 읽어갈 수 있었고,
+-- `select admin_key from meetings` 로 모든 회의의 관리자 비밀값을 그대로 읽어갈 수 있었고,
 -- `update`/`delete`도 admin_key를 몰라도 아무 행이나 직접 가능했다.
 --
 -- 조치:
@@ -39,7 +39,7 @@ $$;
 revoke all on function public.verify_admin_key(text, text) from public;
 grant execute on function public.verify_admin_key(text, text) to anon;
 
--- 4) 관리자 전용 — 모임 정보 수정. admin_key가 맞는 행만 갱신된다.
+-- 4) 관리자 전용 — 회의 정보 수정. admin_key가 맞는 행만 갱신된다.
 create or replace function public.admin_update_meeting_info(
   p_share_code text,
   p_admin_key text,
@@ -97,7 +97,7 @@ revoke all on function public.admin_set_confirmed_slot(text, text, timestamptz) 
 grant execute on function public.admin_set_confirmed_slot(text, text, timestamptz) to anon;
 
 -- 참고 — 이번에 손대지 않은 범위 (알고 있는 잔여 리스크, 필요하면 별도로 처리):
---   * meetings의 delete는 여전히 anon에게 열려 있다 (누구나 아무 모임이나 삭제 가능).
+--   * meetings의 delete는 여전히 anon에게 열려 있다 (누구나 아무 회의가나 삭제 가능).
 --     지금 앱 UI에서 호출하지 않는 경로라 이번 수정에서는 그대로 뒀다.
 --   * participants / availability 테이블은 여전히 `using (true)` 전면 허용 정책이다.
 --     참여자 이름 조작·타인 응답 수정 등은 이번 범위 밖.

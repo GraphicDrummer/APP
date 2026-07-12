@@ -176,7 +176,7 @@ export function CreateMeetingPage() {
     setActiveSlot((cur) => (cur === k ? null : k))
   }
   // 시간대·소요시간은 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해
-  // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"비는 시간")로 보여준다.
+  // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"딱 맞는 시간")로 보여준다.
   const [hoursTouched, setHoursTouched] = useState(false)
   const [durationTouched, setDurationTouched] = useState(false)
   // 마감 줄("답변은 …까지.")을 보여줄지 — "마감 없음"이면 줄이 접히고 "+ 마감 기한 있음"으로 대체
@@ -263,7 +263,7 @@ export function CreateMeetingPage() {
       try {
         await navigator.share({
           title: `딱. — ${title}`,
-          text: `[딱.] "${title}" 모임에 초대해요! 되는 시간을 칠해주세요.`,
+          text: `[딱.] "${title}" 회의에 초대해요! 되는 시간을 칠해주세요.`,
           url: link,
         })
       } catch {
@@ -289,7 +289,7 @@ export function CreateMeetingPage() {
       try {
         await navigator.share({
           title: `딱. — ${title}`,
-          text: `[딱.] "${title}" 모임 관리자 링크예요. 잃어버리면 다시 찾을 수 없으니 꼭 보관해두세요!`,
+          text: `[딱.] "${title}" 회의 관리자 링크예요. 잃어버리면 다시 찾을 수 없으니 꼭 보관해두세요!`,
           url: adminLink,
         })
       } catch {
@@ -322,7 +322,7 @@ export function CreateMeetingPage() {
                 <path d="M5 12.5 10 17.5 19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </motion.div>
-            <p className="text-[13px] font-bold text-ink-muted mt-4">모임이 만들어졌어요</p>
+            <p className="text-[13px] font-bold text-ink-muted mt-4">회의가 만들어졌어요</p>
             <h1 className="text-[22.5px] font-black tracking-[-1.1px] mt-1">{withCharacterIcons(title)}</h1>
             <p className="text-[13px] text-ink-muted mt-1">
               {dateStart} ~ {dateEnd} · {durationSlots}시간
@@ -361,7 +361,7 @@ export function CreateMeetingPage() {
 
           <Enter delay={0.10} className={`${cardCls} p-5 mt-4 border-2 border-primary/20`}>
             <CardLabel>👑 관리자 링크 (주최자 보관용)</CardLabel>
-            <p className="text-[11px] text-ink-muted/80 mt-1">이 링크로 접속하면 별도의 로그인 없이 모임 수정 및 응답 마감이 가능해요!</p>
+            <p className="text-[11px] text-ink-muted/80 mt-1">이 링크로 접속하면 별도의 로그인 없이 회의 수정 및 응답 마감이 가능해요!</p>
             <div className="mt-3 bg-primary/5 rounded-full px-3 py-2.5 overflow-hidden border border-primary/10">
               <p className="text-[13px] font-bold text-primary truncate">
                 {shortAdminLink}
@@ -476,9 +476,9 @@ export function CreateMeetingPage() {
             {/* 새로운 회의, */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')} hintIndex={0} hintActive={hintActive}>
-                {title.trim() || '새로운'}
+                {title.trim() || '새로운 회의'}
               </Slot>
-              <span>회의,</span>
+              <span>,</span>
               <AnimatePresence initial={false}>
                 {activeSlot === 'title' && (
                   <EditorPanel key="ed-title">
@@ -487,7 +487,7 @@ export function CreateMeetingPage() {
                       autoFocus
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="예: 야채 정기 회의"
+                      placeholder="예: 산중컴퍼니 월간 회의"
                     />
                   </EditorPanel>
                 )}
@@ -554,10 +554,10 @@ export function CreateMeetingPage() {
               </AnimatePresence>
             </div>
 
-            {/* 비는 시간을 찾을게요. — 버튼을 눌러야 실제 값으로 반영(플레이스홀더 유지) */}
+            {/* 딱 맞는 시간을 찾을게요. — 버튼을 눌러야 실제 값으로 반영(플레이스홀더 유지) */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
-                {durationTouched ? `${durationSlots}시간` : '딱 맞는 시간'}
+                {durationTouched ? `${durationSlots}시간` : '딱! 맞는 시간'}
               </Slot>
               <span>을 찾을게요.</span>
               <AnimatePresence initial={false}>
@@ -688,7 +688,7 @@ export function CreateMeetingPage() {
                 value={organizer}
                 onFocus={() => setHintActive(false)}
                 onChange={(e) => setOrganizer(e.target.value)}
-                placeholder="예: 감자"
+                placeholder="예: 호랑이 팀장님"
               />
             </Field>
 
@@ -770,7 +770,7 @@ export function CreateMeetingPage() {
                     autoFocus
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="예: 강남역 3번 출구"
+                    placeholder="예: 3층 세미나실"
                   />
                 </motion.div>
               )}
@@ -792,7 +792,7 @@ export function CreateMeetingPage() {
             breathe={hintActive && !saving}
             className="w-full"
           >
-            {saving ? '만드는 중…' : '모임 생성하기'}
+            {saving ? '만드는 중…' : '회의 생성하기'}
           </Button>
         </div>
 
