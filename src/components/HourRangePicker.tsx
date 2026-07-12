@@ -35,6 +35,10 @@ export function ChipRow({
   isDisabled?: (v: number) => boolean
 }) {
   const scroller = useRef<HTMLDivElement>(null)
+  // 마우스 드래그로도 스크롤되게 — 터치는 브라우저 네이티브 스크롤에 맡긴다.
+  // 스크롤바를 숨겨놨기 때문에(scrollbar 숨김) 데스크톱에선 이 드래그 핸들러가
+  // 없으면 스크롤할 방법이 아예 없다 — 반드시 필요.
+  const drag = useRef({ down: false, moved: false, startX: 0, startScroll: 0 })
 
   // 마운트 시 1회만 — 선택된 칩을 컨테이너 중앙으로 스크롤한다.
   // getBoundingClientRect 기반 뷰포트 좌표 차이로 계산해 offsetParent(가장
@@ -51,6 +55,30 @@ export function ChipRow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse') return
+    const row = scroller.current
+    if (!row) return
+    drag.current = { down: true, moved: false, startX: e.clientX, startScroll: row.scrollLeft }
+  }
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag.current.down) return
+    const row = scroller.current
+    if (!row) return
+    const dx = e.clientX - drag.current.startX
+    if (Math.abs(dx) > 4) drag.current.moved = true
+    row.scrollLeft = drag.current.startScroll - dx
+  }
+  const endDrag = () => {
+    if (!drag.current.down) return
+    drag.current.down = false
+    // 드래그 끝의 클릭 이벤트가 칩을 잘못 선택하지 않도록, moved 플래그는
+    // 이번 틱의 click 핸들러가 확인한 다음에 리셋한다.
+    window.setTimeout(() => {
+      drag.current.moved = false
+    }, 0)
+  }
+
   return (
     <div className="flex items-center gap-2">
       {label && (
@@ -59,8 +87,12 @@ export function ChipRow({
       <div
         ref={scroller}
         data-testid={testId}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerLeave={endDrag}
         style={{ paddingLeft: `calc(50% - ${CHIP_WIDTH / 2}px)`, paddingRight: `calc(50% - ${CHIP_WIDTH / 2}px)` }}
-        className="flex flex-1 min-w-0 gap-1.5 overflow-x-scroll overflow-y-hidden py-0.5 snap-x snap-mandatory touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex flex-1 min-w-0 gap-1.5 overflow-x-scroll overflow-y-hidden py-0.5 snap-x snap-proximity touch-pan-x cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {options.map((h) => {
           const disabled = isDisabled?.(h) ?? false
@@ -71,7 +103,10 @@ export function ChipRow({
               data-hour={h}
               disabled={disabled}
               aria-pressed={h === value}
-              onClick={() => onChange(h)}
+              onClick={() => {
+                if (drag.current.moved) return // 드래그 끝의 클릭은 무시
+                onChange(h)
+              }}
               whileTap={disabled ? undefined : press}
               transition={pressSpring}
               style={{ width: CHIP_WIDTH }}
