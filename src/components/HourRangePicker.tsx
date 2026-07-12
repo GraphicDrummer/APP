@@ -30,9 +30,13 @@ export function ChipRow({
 
   // 선택된 칩(기본값 포함)을 가로축 중앙으로 스크롤 — 최초 렌더 때 한 번만.
   // (매 클릭마다 재발동하면 자유 스크롤/드래그와 충돌해서 위치가 멋대로 튄다)
-  // 이 줄이 밑줄 탭으로 펼쳐지는 패널 안에 중첩돼 있으면 부모의 height 애니메이션이
-  // 끝나기 전엔 아직 최종 레이아웃이 아닐 수 있어, ResizeObserver로 크기가
-  // 바뀔 때마다(패널이 다 펼쳐질 때까지) 짧은 시간 동안 계속 재보정한다.
+  // 이 줄이 밑줄 탭으로 펼쳐지는 패널(EditorPanel: height 0→'auto' 스프링) 안에
+  // 중첩돼 있으면, framer-motion이 'auto' 높이를 측정하는 과정에서 컨테이너 폭이
+  // 잠깐 실제 값과 다르게 읽히는 프레임이 섞여(ResizeObserver 이벤트로는 못 잡는
+  // 경우도 있음) 중앙 계산이 어긋날 수 있다. 그래서 매 프레임 계속 재중앙정렬하다가,
+  // 부모 스프링이 확실히 다 끝났을 시간(700ms)이 지나면 멈춘다 — 마지막 프레임의
+  // 계산이 항상 "현재" 실제 폭 기준이라 자연히 정답에 수렴한다.
+  // 그 사이 사용자가 직접 드래그를 시작하면 즉시 자동 보정을 멈춰 손 감각과 안 싸운다.
   useEffect(() => {
     const row = scroller.current
     if (!row) return
@@ -40,16 +44,19 @@ export function ChipRow({
       const chip = row.querySelector<HTMLElement>(`[data-hour="${value}"]`)
       if (chip) row.scrollTo({ left: chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2 })
     }
-    center()
-    const raf = requestAnimationFrame(center)
-    const ro = new ResizeObserver(center)
-    ro.observe(row)
-    const stopObserving = window.setTimeout(() => ro.disconnect(), 500)
-    return () => {
-      cancelAnimationFrame(raf)
-      ro.disconnect()
-      window.clearTimeout(stopObserving)
+    const SETTLE_MS = 700
+    const start = performance.now()
+    let rafId = 0
+    const tick = () => {
+      if (drag.current.down) return // 사용자가 직접 스크롤을 시작하면 자동 보정 중단
+      center()
+      if (performance.now() - start < SETTLE_MS) {
+        rafId = requestAnimationFrame(tick)
+      }
     }
+    center()
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
