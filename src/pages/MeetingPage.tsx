@@ -25,12 +25,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { press, pressSpring, riseIn, spring } from '../lib/motion'
 import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '../components/ui'
 import { AvailabilityGrid, type CascadeSignal } from '../components/AvailabilityGrid'
-import {
-  ChipRow,
-  HourRangePicker,
-  type ChipRowHandle,
-  type HourRangePickerHandle,
-} from '../components/HourRangePicker'
+import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
 
@@ -199,9 +194,6 @@ export function MeetingPage() {
   const [editDeadlineHour, setEditDeadlineHour] = useState(18)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
-  // 정보 수정 카드가 펼쳐지는 애니메이션이 끝난 시점에 시간 칩을 중앙정렬하기 위한 핸들
-  const editHourPickerRef = useRef<HourRangePickerHandle>(null)
-  const editDeadlineHourRef = useRef<ChipRowHandle>(null)
 
   const monday = useMemo(
     () => (meeting ? mondayOf(parseDateRange(meeting.date_range).start) : null),
@@ -666,10 +658,6 @@ export function MeetingPage() {
                   initial={riseIn.initial}
                   animate={riseIn.animate}
                   transition={spring}
-                  onAnimationComplete={() => {
-                    editHourPickerRef.current?.center()
-                    editDeadlineHourRef.current?.center()
-                  }}
                   className={`${cardCls} p-4 space-y-3`}
                 >
                   <Field label="모임 제목">
@@ -719,7 +707,6 @@ export function MeetingPage() {
                       시간 범위
                     </span>
                     <HourRangePicker
-                      ref={editHourPickerRef}
                       start={editHourStart}
                       end={editHourEnd}
                       onChange={(s, e) => {
@@ -767,7 +754,6 @@ export function MeetingPage() {
                             마감 시각
                           </span>
                           <ChipRow
-                            ref={editDeadlineHourRef}
                             testId="edit-deadline-hour"
                             options={DEADLINE_HOURS}
                             value={editDeadlineHour}

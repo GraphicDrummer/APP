@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
@@ -6,12 +6,7 @@ import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { Button, Enter, Field, LabeledRow, RoleBadge, Select, TextInput, cardCls } from '../components/ui'
-import {
-  ChipRow,
-  HourRangePicker,
-  type ChipRowHandle,
-  type HourRangePickerHandle,
-} from '../components/HourRangePicker'
+import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { hhmm } from '../lib/slots'
 
 interface DraftPerson {
@@ -72,17 +67,14 @@ function Slot({
   )
 }
 
-// 밑줄 영역 바로 아래에서 펼쳐지는 입력 패널 — flex-wrap 안에서 w-full이라 그 자리에서 줄바꿈되어 등장.
-// onOpened를 주면 이 패널의 펼침/접힘 애니메이션이 끝나는 시점에 호출된다 — 안에 시간
-// 칩(ChipRow/HourRangePicker)이 있을 때, 그 최종 레이아웃 기준으로 중앙정렬을 맞추는 용도.
-function EditorPanel({ children, onOpened }: { children: React.ReactNode; onOpened?: () => void }) {
+// 밑줄 영역 바로 아래에서 펼쳐지는 입력 패널 — flex-wrap 안에서 w-full이라 그 자리에서 줄바꿈되어 등장
+function EditorPanel({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
       transition={spring}
-      onAnimationComplete={onOpened}
       className="w-full overflow-hidden"
     >
       <div className="mt-2 mb-1 rounded-card border border-line bg-surface shadow-card p-4">{children}</div>
@@ -146,9 +138,6 @@ export function CreateMeetingPage() {
   const [durationTouched, setDurationTouched] = useState(false)
   // 마감 줄("답변은 …까지.")을 보여줄지 — "마감 없음"이면 줄이 접히고 "+ 마감 기한 있음"으로 대체
   const [deadlineShown, setDeadlineShown] = useState(true)
-  // 밑줄 패널이 펼쳐지는 애니메이션이 끝난 시점에 시간 칩을 중앙정렬하기 위한 핸들
-  const hourPickerRef = useRef<HourRangePickerHandle>(null)
-  const deadlineHourRef = useRef<ChipRowHandle>(null)
 
   const [link, setLink] = useState<string | null>(null)
   const [adminLink, setAdminLink] = useState<string | null>(null)
@@ -471,9 +460,8 @@ export function CreateMeetingPage() {
               <span>사이에서</span>
               <AnimatePresence initial={false}>
                 {activeSlot === 'hours' && (
-                  <EditorPanel key="ed-hours" onOpened={() => hourPickerRef.current?.center()}>
+                  <EditorPanel key="ed-hours">
                     <HourRangePicker
-                      ref={hourPickerRef}
                       start={hourStart}
                       end={hourEnd}
                       onChange={(s, e) => {
@@ -532,7 +520,7 @@ export function CreateMeetingPage() {
                     <span>까지.</span>
                     <AnimatePresence initial={false}>
                       {activeSlot === 'deadline' && (
-                        <EditorPanel key="ed-deadline" onOpened={() => deadlineHourRef.current?.center()}>
+                        <EditorPanel key="ed-deadline">
                           <Field label="응답 마감 날짜">
                             <TextInput
                               data-testid="deadline-date"
@@ -551,7 +539,6 @@ export function CreateMeetingPage() {
                                 마감 시각
                               </span>
                               <ChipRow
-                                ref={deadlineHourRef}
                                 testId="deadline-hour"
                                 options={DEADLINE_HOURS}
                                 value={deadlineHour}

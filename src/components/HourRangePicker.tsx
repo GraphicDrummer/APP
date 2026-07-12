@@ -1,82 +1,57 @@
 // 시간 범위(시작~끝) 선택 — 세로로 긴 select 대신 좌우 스크롤 가로 칩.
 // 표기는 앱 공통 규칙(콜론 + 24시간제)을 따른다.
 
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
-import { motion } from 'motion/react'
 import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
+import { motion } from 'motion/react'
 
-/** ChipRow가 외부(부모의 onAnimationComplete 등)에서 명시적으로 재중앙정렬할 수 있게 노출하는 핸들 */
-export interface ChipRowHandle {
-  center: () => void
+// 선택된 값 좌우로 몇 칸씩 보여줄지 — 2면 최대 5칸(선택값 포함)이 떠서
+// 이 앱의 칩 크기(~57px+gap) 기준 좁은 화면 스크롤 컨테이너 폭(~300px)에도
+// 스크롤 없이 딱 들어간다. 더 먼 값은 칩을 눌러 그쪽으로 중심을 옮겨가며 찾는다.
+const WINDOW_RADIUS = 2
+
+const chipBaseCls = 'flex-none rounded-full px-3 py-1.5 text-[12px] font-bold'
+
+/** 실제 칩과 폭이 똑같은 투명 자리표시자 — 값이 배열 끝에 가까워 대칭이 안 맞을 때
+ *  반대쪽에 채워 넣어서, 선택된 칩이 항상 컨테이너 한가운데 오도록 만든다. */
+function Spacer() {
+  return (
+    <span aria-hidden className={`${chipBaseCls} invisible pointer-events-none`}>
+      00:00
+    </span>
+  )
 }
 
-/** 가로 스크롤 시간 칩 한 줄 — 시간 범위·마감 시각 등에서 공유하는 단일 인터랙션 */
-export const ChipRow = forwardRef<
-  ChipRowHandle,
-  {
-    /** 생략하면 라벨 없이 칩만 표시 */
-    label?: string
-    options: number[]
-    value: number
-    onChange: (v: number) => void
-    testId: string
-    /** true를 반환하는 칩은 위치는 그대로 두고 흐리게(opacity) + 선택 불가 처리 */
-    isDisabled?: (v: number) => boolean
-  }
->(function ChipRow({ label, options, value, onChange, testId, isDisabled }, ref) {
-  const scroller = useRef<HTMLDivElement>(null)
-  // 마우스 드래그로도 스크롤되게 — 터치는 브라우저 네이티브 스크롤에 맡긴다
-  const drag = useRef({ down: false, moved: false, startX: 0, startScroll: 0 })
-
-  // 선택된 칩을 가로축 중앙으로 스크롤한다.
-  //
-  // el.scrollIntoView({inline:'center'})로 브라우저가 직접 계산하게 해봤으나, 이
-  // 컴포넌트 트리(framer-motion 조상 아래 중첩된 가로 스크롤 flex 행)에서 실제
-  // DOM으로 직접 검증한 결과 항상 정확히 칸 하나만큼 모자라게 스크롤되는 버그를
-  // 확인했다(gap 제거해도 재현, 애니메이션이 다 끝난 뒤 수동 호출해도 재현 —
-  // 타이밍이 아니라 scrollIntoView 자체의 좌표 계산 문제). 그래서 scrollLeft를
-  // 직접 계산하는 방식으로 되돌렸다 — 이 계산은 실측으로 정확함을 확인했다.
-  const center = useCallback(() => {
-    const row = scroller.current
-    if (!row) return
-    const chip = row.querySelector<HTMLElement>(`[data-hour="${value}"]`)
-    if (chip) row.scrollTo({ left: chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2 })
-  }, [value])
-
-  // 마운트 시 1회만 — 매 클릭마다 재발동하면 자유 스크롤/드래그와 충돌한다.
-  // 이 시점에 컨테이너 폭은 이미 최종값이라(높이 애니메이션은 폭에 영향 없음)
-  // 별도 지연이나 애니메이션 완료 콜백 없이 바로 계산해도 정확하다.
-  useEffect(() => {
-    center()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  useImperativeHandle(ref, () => ({ center }), [center])
-
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.pointerType !== 'mouse') return
-    const row = scroller.current
-    if (!row) return
-    drag.current = { down: true, moved: false, startX: e.clientX, startScroll: row.scrollLeft }
-  }
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag.current.down) return
-    const row = scroller.current
-    if (!row) return
-    const dx = e.clientX - drag.current.startX
-    if (Math.abs(dx) > 4) drag.current.moved = true
-    row.scrollLeft = drag.current.startScroll - dx
-  }
-  const endDrag = () => {
-    if (!drag.current.down) return
-    drag.current.down = false
-    // 드래그 끝의 클릭 이벤트가 칩을 잘못 선택하지 않도록, moved 플래그는
-    // 이번 틱의 click 핸들러가 확인한 다음에 리셋한다.
-    window.setTimeout(() => {
-      drag.current.moved = false
-    }, 0)
-  }
+/** 가로 스크롤 시간 칩 한 줄 — 시간 범위·마감 시각 등에서 공유하는 단일 인터랙션.
+ *
+ * 선택값이 항상 중앙에 보이도록 스크롤 위치를 JS로 계산/보정하지 않는다 — 대신
+ * 선택값 기준 앞뒤 WINDOW_RADIUS칸만 렌더링하고 flex justify-center로 가운데
+ * 정렬한다. 배열 끝이라 한쪽이 모자라면 투명 Spacer로 채워 대칭을 유지한다.
+ * (여러 스크롤 기반 접근을 실기기에서 검증했지만 전부 실패해 이 방식으로 교체함)
+ */
+export function ChipRow({
+  label,
+  options,
+  value,
+  onChange,
+  testId,
+  isDisabled,
+}: {
+  /** 생략하면 라벨 없이 칩만 표시 */
+  label?: string
+  options: number[]
+  value: number
+  onChange: (v: number) => void
+  testId: string
+  /** true를 반환하는 칩은 위치는 그대로 두고 흐리게(opacity) + 선택 불가 처리 */
+  isDisabled?: (v: number) => boolean
+}) {
+  const selectedIdx = options.indexOf(value)
+  const windowStart = Math.max(0, selectedIdx - WINDOW_RADIUS)
+  const windowEnd = Math.min(options.length, selectedIdx + WINDOW_RADIUS + 1)
+  const windowed = options.slice(windowStart, windowEnd)
+  const leadingSpacers = WINDOW_RADIUS - (selectedIdx - windowStart)
+  const trailingSpacers = WINDOW_RADIUS - (windowEnd - 1 - selectedIdx)
 
   return (
     <div className="flex items-center gap-2">
@@ -84,15 +59,14 @@ export const ChipRow = forwardRef<
         <span className="flex-none w-8 text-[11px] font-black text-ink-muted/60">{label}</span>
       )}
       <div
-        ref={scroller}
+        key={value}
         data-testid={testId}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerLeave={endDrag}
-        className="flex gap-1.5 overflow-x-auto py-0.5 cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex flex-1 justify-center gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {options.map((h) => {
+        {Array.from({ length: leadingSpacers }, (_, i) => (
+          <Spacer key={`lead-${i}`} />
+        ))}
+        {windowed.map((h) => {
           const disabled = isDisabled?.(h) ?? false
           return (
             <motion.button
@@ -101,13 +75,10 @@ export const ChipRow = forwardRef<
               data-hour={h}
               disabled={disabled}
               aria-pressed={h === value}
-              onClick={() => {
-                if (drag.current.moved) return // 드래그 끝의 클릭은 무시
-                onChange(h)
-              }}
+              onClick={() => onChange(h)}
               whileTap={disabled ? undefined : press}
               transition={pressSpring}
-              className={`flex-none rounded-full px-3 py-1.5 text-[12px] font-bold transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
+              className={`${chipBaseCls} transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
                 disabled
                   ? 'opacity-30 cursor-not-allowed bg-white border border-line text-ink-muted'
                   : h === value
@@ -119,10 +90,13 @@ export const ChipRow = forwardRef<
             </motion.button>
           )
         })}
+        {Array.from({ length: trailingSpacers }, (_, i) => (
+          <Spacer key={`trail-${i}`} />
+        ))}
       </div>
     </div>
   )
-})
+}
 
 interface Props {
   start: number
@@ -130,37 +104,15 @@ interface Props {
   onChange: (start: number, end: number) => void
 }
 
-/** HourRangePicker가 감싸는 두 ChipRow(시작/끝)를 한 번에 재중앙정렬할 수 있게 노출하는 핸들 */
-export interface HourRangePickerHandle {
-  center: () => void
-}
-
-export const HourRangePicker = forwardRef<HourRangePickerHandle, Props>(function HourRangePicker(
-  { start, end, onChange },
-  ref,
-) {
+export function HourRangePicker({ start, end, onChange }: Props) {
   // 두 행 모두 항상 같은 칩 세트를 고정 위치에 렌더한다 — 시작: 0~23, 끝(배타적): 1~24.
   // 시작 선택에 따라 목록 길이가 바뀌면 칩 위치가 밀리므로, 대신 선택 불가 칩만 흐리게 처리.
   const startOptions = Array.from({ length: 24 }, (_, h) => h)
   const endOptions = Array.from({ length: 24 }, (_, i) => i + 1)
 
-  const startRef = useRef<ChipRowHandle>(null)
-  const endRef = useRef<ChipRowHandle>(null)
-  useImperativeHandle(
-    ref,
-    () => ({
-      center: () => {
-        startRef.current?.center()
-        endRef.current?.center()
-      },
-    }),
-    [],
-  )
-
   return (
     <div className="space-y-2">
       <ChipRow
-        ref={startRef}
         label="시작"
         testId="hour-start"
         options={startOptions}
@@ -168,7 +120,6 @@ export const HourRangePicker = forwardRef<HourRangePickerHandle, Props>(function
         onChange={(s) => onChange(s, end <= s ? s + 1 : end)}
       />
       <ChipRow
-        ref={endRef}
         label="끝"
         testId="hour-end"
         options={endOptions}
@@ -181,4 +132,4 @@ export const HourRangePicker = forwardRef<HourRangePickerHandle, Props>(function
       </p>
     </div>
   )
-})
+}
