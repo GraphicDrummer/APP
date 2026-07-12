@@ -1,64 +1,58 @@
 // 시간 범위(시작~끝) 선택 — 세로로 긴 select 대신 좌우 스크롤 가로 칩.
 // 표기는 앱 공통 규칙(콜론 + 24시간제)을 따른다.
 
-import { useEffect, useRef } from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react'
 import { motion } from 'motion/react'
 import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
 
+/** ChipRow가 외부(부모의 onAnimationComplete 등)에서 명시적으로 재중앙정렬할 수 있게 노출하는 핸들 */
+export interface ChipRowHandle {
+  center: () => void
+}
+
 /** 가로 스크롤 시간 칩 한 줄 — 시간 범위·마감 시각 등에서 공유하는 단일 인터랙션 */
-export function ChipRow({
-  label,
-  options,
-  value,
-  onChange,
-  testId,
-  isDisabled,
-}: {
-  /** 생략하면 라벨 없이 칩만 표시 */
-  label?: string
-  options: number[]
-  value: number
-  onChange: (v: number) => void
-  testId: string
-  /** true를 반환하는 칩은 위치는 그대로 두고 흐리게(opacity) + 선택 불가 처리 */
-  isDisabled?: (v: number) => boolean
-}) {
+export const ChipRow = forwardRef<
+  ChipRowHandle,
+  {
+    /** 생략하면 라벨 없이 칩만 표시 */
+    label?: string
+    options: number[]
+    value: number
+    onChange: (v: number) => void
+    testId: string
+    /** true를 반환하는 칩은 위치는 그대로 두고 흐리게(opacity) + 선택 불가 처리 */
+    isDisabled?: (v: number) => boolean
+  }
+>(function ChipRow({ label, options, value, onChange, testId, isDisabled }, ref) {
   const scroller = useRef<HTMLDivElement>(null)
   // 마우스 드래그로도 스크롤되게 — 터치는 브라우저 네이티브 스크롤에 맡긴다
   const drag = useRef({ down: false, moved: false, startX: 0, startScroll: 0 })
 
-  // 선택된 칩(기본값 포함)을 가로축 중앙으로 스크롤 — 최초 렌더 때 한 번만.
-  // (매 클릭마다 재발동하면 자유 스크롤/드래그와 충돌해서 위치가 멋대로 튄다)
-  // 이 줄이 밑줄 탭으로 펼쳐지는 패널(EditorPanel: height 0→'auto' 스프링) 안에
-  // 중첩돼 있으면, framer-motion이 'auto' 높이를 측정하는 과정에서 컨테이너 폭이
-  // 잠깐 실제 값과 다르게 읽히는 프레임이 섞여(ResizeObserver 이벤트로는 못 잡는
-  // 경우도 있음) 중앙 계산이 어긋날 수 있다. 그래서 매 프레임 계속 재중앙정렬하다가,
-  // 부모 스프링이 확실히 다 끝났을 시간(700ms)이 지나면 멈춘다 — 마지막 프레임의
-  // 계산이 항상 "현재" 실제 폭 기준이라 자연히 정답에 수렴한다.
-  // 그 사이 사용자가 직접 드래그를 시작하면 즉시 자동 보정을 멈춰 손 감각과 안 싸운다.
-  useEffect(() => {
+  // 선택된 칩을 가로축 중앙으로 스크롤한다.
+  //
+  // el.scrollIntoView({inline:'center'})로 브라우저가 직접 계산하게 해봤으나, 이
+  // 컴포넌트 트리(framer-motion 조상 아래 중첩된 가로 스크롤 flex 행)에서 실제
+  // DOM으로 직접 검증한 결과 항상 정확히 칸 하나만큼 모자라게 스크롤되는 버그를
+  // 확인했다(gap 제거해도 재현, 애니메이션이 다 끝난 뒤 수동 호출해도 재현 —
+  // 타이밍이 아니라 scrollIntoView 자체의 좌표 계산 문제). 그래서 scrollLeft를
+  // 직접 계산하는 방식으로 되돌렸다 — 이 계산은 실측으로 정확함을 확인했다.
+  const center = useCallback(() => {
     const row = scroller.current
     if (!row) return
-    const center = () => {
-      const chip = row.querySelector<HTMLElement>(`[data-hour="${value}"]`)
-      if (chip) row.scrollTo({ left: chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2 })
-    }
-    const SETTLE_MS = 700
-    const start = performance.now()
-    let rafId = 0
-    const tick = () => {
-      if (drag.current.down) return // 사용자가 직접 스크롤을 시작하면 자동 보정 중단
-      center()
-      if (performance.now() - start < SETTLE_MS) {
-        rafId = requestAnimationFrame(tick)
-      }
-    }
+    const chip = row.querySelector<HTMLElement>(`[data-hour="${value}"]`)
+    if (chip) row.scrollTo({ left: chip.offsetLeft - row.clientWidth / 2 + chip.clientWidth / 2 })
+  }, [value])
+
+  // 마운트 시 1회만 — 매 클릭마다 재발동하면 자유 스크롤/드래그와 충돌한다.
+  // 이 시점에 컨테이너 폭은 이미 최종값이라(높이 애니메이션은 폭에 영향 없음)
+  // 별도 지연이나 애니메이션 완료 콜백 없이 바로 계산해도 정확하다.
+  useEffect(() => {
     center()
-    rafId = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useImperativeHandle(ref, () => ({ center }), [center])
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== 'mouse') return
@@ -128,7 +122,7 @@ export function ChipRow({
       </div>
     </div>
   )
-}
+})
 
 interface Props {
   start: number
@@ -136,15 +130,37 @@ interface Props {
   onChange: (start: number, end: number) => void
 }
 
-export function HourRangePicker({ start, end, onChange }: Props) {
+/** HourRangePicker가 감싸는 두 ChipRow(시작/끝)를 한 번에 재중앙정렬할 수 있게 노출하는 핸들 */
+export interface HourRangePickerHandle {
+  center: () => void
+}
+
+export const HourRangePicker = forwardRef<HourRangePickerHandle, Props>(function HourRangePicker(
+  { start, end, onChange },
+  ref,
+) {
   // 두 행 모두 항상 같은 칩 세트를 고정 위치에 렌더한다 — 시작: 0~23, 끝(배타적): 1~24.
   // 시작 선택에 따라 목록 길이가 바뀌면 칩 위치가 밀리므로, 대신 선택 불가 칩만 흐리게 처리.
   const startOptions = Array.from({ length: 24 }, (_, h) => h)
   const endOptions = Array.from({ length: 24 }, (_, i) => i + 1)
 
+  const startRef = useRef<ChipRowHandle>(null)
+  const endRef = useRef<ChipRowHandle>(null)
+  useImperativeHandle(
+    ref,
+    () => ({
+      center: () => {
+        startRef.current?.center()
+        endRef.current?.center()
+      },
+    }),
+    [],
+  )
+
   return (
     <div className="space-y-2">
       <ChipRow
+        ref={startRef}
         label="시작"
         testId="hour-start"
         options={startOptions}
@@ -152,6 +168,7 @@ export function HourRangePicker({ start, end, onChange }: Props) {
         onChange={(s) => onChange(s, end <= s ? s + 1 : end)}
       />
       <ChipRow
+        ref={endRef}
         label="끝"
         testId="hour-end"
         options={endOptions}
@@ -164,4 +181,4 @@ export function HourRangePicker({ start, end, onChange }: Props) {
       </p>
     </div>
   )
-}
+})
