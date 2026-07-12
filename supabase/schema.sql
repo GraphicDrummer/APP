@@ -39,7 +39,12 @@ create table public.participants (
   name         text not null,
   role         text not null default 'required' check (role in ('required', 'optional')),
   -- 가용 시간 제출 완료 시각 (null이면 아직 미제출)
-  submitted_at timestamptz
+  submitted_at timestamptz,
+  -- 재미로 배정하는 캐릭터 13종 중 하나 (프론트에서 무작위 배정). 화면 표시는 아직 없음.
+  character    text check (character in (
+    'tiger', 'cat', 'dog', 'rabbit', 'fox', 'bear', 'panda',
+    'koala', 'lion', 'elephant', 'penguin', 'owl', 'otter'
+  ))
 );
 
 create index participants_meeting_idx on public.participants (meeting_id);

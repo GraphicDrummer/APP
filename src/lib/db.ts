@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { randomCharacter } from './characters'
 import type {
   AvailabilityRow,
   MeetingRow,
@@ -194,6 +195,8 @@ export async function addParticipant(input: AddParticipantInput): Promise<Partic
         name: input.name,
         role: input.role ?? 'required',
         submitted_at: null,
+        // 재미로 배정하는 캐릭터 — 13종 중 무작위 하나. 화면 표시는 아직 없음.
+        character: randomCharacter(),
       })
       .select()
       .single(),

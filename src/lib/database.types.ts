@@ -42,6 +42,8 @@ export type ParticipantRow = {
   name: string
   role: Role
   submitted_at: string | null
+  /** 재미로 배정하는 캐릭터 13종 중 하나 (아직 화면 표시는 없음) */
+  character: string | null
 }
 
 export type AvailabilityRow = {
@@ -63,7 +65,7 @@ export type Database = {
       }
       participants: {
         Row: ParticipantRow
-        Insert: Omit<ParticipantRow, 'id'> & Partial<Pick<ParticipantRow, 'id'>>
+        Insert: Omit<ParticipantRow, 'id' | 'character'> & Partial<Pick<ParticipantRow, 'id' | 'character'>>
         Update: Partial<Omit<ParticipantRow, 'id'>>
         Relationships: []
       }
