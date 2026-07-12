@@ -372,8 +372,15 @@ export function CreateMeetingPage() {
         <StepTabs current={0} />
       </div>
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
+        {/* 앱 첫 진입 로고 — 순수 CSS 등장 애니메이션(index.css의 animate-logo-in), motion 불필요 */}
+        <p
+          className="animate-logo-in pl-0.5 text-[13px] font-black tracking-[0.5px] text-ink-muted/70"
+          aria-hidden
+        >
+          딱<span className="text-primary">.</span>
+        </p>
         <Enter>
-          <header className="pt-5 pb-5">
+          <header className="pt-1 pb-5">
             <h1 className="text-[26px] font-black tracking-[-1.3px] leading-tight">
               새로운 회의를 시작해요<span className="text-primary">.</span>
             </h1>

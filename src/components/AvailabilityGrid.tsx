@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion, useAnimationControls } from 'motion/react'
 import { DAYS, HOURS, key, type CellState, type Person } from '../engine'
 import { hhmm } from '../lib/slots'
@@ -31,6 +31,8 @@ interface Props {
   onCycleHour?: (h: number) => void
   /** 요일/시간 일괄 변경 시 그 줄을 순서대로 펄스시키는 계단식 스태거 신호 */
   cascade?: CascadeSignal | null
+  /** 그리드 첫 진입 시 이 칸이 한 번 살짝 들썩였다가 돌아온다(입력 유도) */
+  hintCell?: { d: number; h: number } | null
 }
 
 // 개별 칸 — 헤더 일괄 변경 시 자기 순서(index)에 맞춰 살짝 커졌다 돌아오는 펄스를 재생한다.
@@ -42,6 +44,7 @@ function Cell({
   state,
   onCycle,
   cascade,
+  hint = false,
 }: {
   d: number
   h: number
@@ -49,6 +52,8 @@ function Cell({
   state: DisplayState
   onCycle: (d: number, h: number) => void
   cascade?: CascadeSignal | null
+  /** 그리드 첫 진입 시 딱 이 칸만 한 번 들썩이며 입력을 유도한다 */
+  hint?: boolean
 }) {
   const controls = useAnimationControls()
   const affected = !!cascade && (cascade.kind === 'day' ? cascade.line === d : cascade.line === h)
@@ -64,6 +69,20 @@ function Cell({
     // nonce가 바뀔 때마다(같은 줄 반복 클릭 포함) 펄스를 다시 재생
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cascade?.nonce])
+
+  // 온보딩 들썩임 — 그리드가 처음 뜬 직후 딱 한 번, 살짝 늦게 재생해 시선을 끈다
+  useEffect(() => {
+    if (!hint) return
+    const t = window.setTimeout(() => {
+      void controls.start({
+        y: [0, -4, 1, 0],
+        scale: [1, 1.08, 0.98, 1],
+        transition: { duration: 0.6, times: [0, 0.35, 0.7, 1], ease: 'easeInOut' },
+      })
+    }, 550)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hint])
 
   return (
     <td>
@@ -112,8 +131,31 @@ export function AvailabilityGrid({
   onCycleDay,
   onCycleHour,
   cascade = null,
+  hintCell = null,
 }: Props) {
   const cellState = (d: number, h: number): DisplayState => person.cells[key(d, h)] ?? 'blocked'
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [canScrollLeft, setCanScrollLeft] = useState(false)
+  const [canScrollRight, setCanScrollRight] = useState(false)
+
+  // 그리드가 화면보다 넓어 가로 스크롤이 필요할 때만 양 끝에 페이드+화살표 힌트를 보여준다.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const update = () => {
+      setCanScrollLeft(el.scrollLeft > 4)
+      setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    el.addEventListener('scroll', update, { passive: true })
+    return () => {
+      ro.disconnect()
+      el.removeEventListener('scroll', update)
+    }
+  }, [hours.length])
 
   return (
     <div>
@@ -129,76 +171,101 @@ export function AvailabilityGrid({
         )}
       </div>
 
-      <table className="w-full table-fixed border-separate border-spacing-[4px]">
-        <thead>
-          <tr>
-            <th className="w-11" />
-            {DAYS.map((d, i) => {
-              const colState = uniformState(hours.map((h) => cellState(i, h)))
-              const style = HEADER_STYLE[colState ?? 'blocked']
-              return (
-                <th key={d}>
-                  {onCycleDay ? (
-                    <motion.button
-                      type="button"
-                      data-testid={`day-${i}`}
-                      aria-label={`${d}요일 전체 순환`}
-                      onClick={() => onCycleDay(i)}
-                      whileTap={press}
-                      transition={pressSpring}
-                      className={`w-full h-[30px] rounded-[13px] text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
-                    >
-                      {d}
-                    </motion.button>
-                  ) : (
-                    <span className="block text-[11px] font-black text-ink">{d}</span>
-                  )}
-                </th>
-              )
-            })}
-          </tr>
-        </thead>
-        <tbody>
-          {hours.map((h, row) => {
-            const rowState = uniformState(DAYS.map((_, d) => cellState(d, h)))
-            const hourStyle = HEADER_STYLE[rowState ?? 'blocked']
-            return (
-            <tr key={h}>
-              <td>
-                {onCycleHour ? (
-                  <motion.button
-                    type="button"
-                    data-testid={`hour-${h}`}
-                    aria-label={`${hhmm(h)} 전체 순환`}
-                    onClick={() => onCycleHour(h)}
-                    whileTap={press}
-                    transition={pressSpring}
-                    className={`w-full h-[30px] rounded-[13px] text-[10px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${hourStyle}`}
-                  >
-                    {hhmm(h)}
-                  </motion.button>
-                ) : (
-                  <span className="block text-center text-[10px] font-black text-ink">
-                    {hhmm(h)}
-                  </span>
-                )}
-              </td>
-              {DAYS.map((_, d) => (
-                <Cell
-                  key={d}
-                  d={d}
-                  h={h}
-                  row={row}
-                  state={cellState(d, h)}
-                  onCycle={onCycleCell}
-                  cascade={cascade}
-                />
-              ))}
-            </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <div className="relative">
+        <div
+          ref={scrollRef}
+          className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <table className="min-w-[340px] w-full table-fixed border-separate border-spacing-[4px]">
+            <thead>
+              <tr>
+                <th className="w-11" />
+                {DAYS.map((d, i) => {
+                  const colState = uniformState(hours.map((h) => cellState(i, h)))
+                  const style = HEADER_STYLE[colState ?? 'blocked']
+                  return (
+                    <th key={d}>
+                      {onCycleDay ? (
+                        <motion.button
+                          type="button"
+                          data-testid={`day-${i}`}
+                          aria-label={`${d}요일 전체 순환`}
+                          onClick={() => onCycleDay(i)}
+                          whileTap={press}
+                          transition={pressSpring}
+                          className={`w-full h-[30px] rounded-[13px] text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
+                        >
+                          {d}
+                        </motion.button>
+                      ) : (
+                        <span className="block text-[11px] font-black text-ink">{d}</span>
+                      )}
+                    </th>
+                  )
+                })}
+              </tr>
+            </thead>
+            <tbody>
+              {hours.map((h, row) => {
+                const rowState = uniformState(DAYS.map((_, d) => cellState(d, h)))
+                const hourStyle = HEADER_STYLE[rowState ?? 'blocked']
+                return (
+                  <tr key={h}>
+                    <td>
+                      {onCycleHour ? (
+                        <motion.button
+                          type="button"
+                          data-testid={`hour-${h}`}
+                          aria-label={`${hhmm(h)} 전체 순환`}
+                          onClick={() => onCycleHour(h)}
+                          whileTap={press}
+                          transition={pressSpring}
+                          className={`w-full h-[30px] rounded-[13px] text-[10px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${hourStyle}`}
+                        >
+                          {hhmm(h)}
+                        </motion.button>
+                      ) : (
+                        <span className="block text-center text-[10px] font-black text-ink">
+                          {hhmm(h)}
+                        </span>
+                      )}
+                    </td>
+                    {DAYS.map((_, d) => (
+                      <Cell
+                        key={d}
+                        d={d}
+                        h={h}
+                        row={row}
+                        state={cellState(d, h)}
+                        onCycle={onCycleCell}
+                        cascade={cascade}
+                        hint={hintCell?.d === d && hintCell?.h === h}
+                      />
+                    ))}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {canScrollLeft && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-8 flex items-center bg-gradient-to-r from-app to-transparent"
+          >
+            <span className="text-ink-muted/70 text-[13px] font-black">‹</span>
+          </div>
+        )}
+        {canScrollRight && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 w-8 flex items-center justify-end bg-gradient-to-l from-app to-transparent"
+          >
+            <span className="text-ink-muted/70 text-[13px] font-black">›</span>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

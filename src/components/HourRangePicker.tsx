@@ -28,9 +28,11 @@ export function ChipRow({
   // 마우스 드래그로도 스크롤되게 — 터치는 브라우저 네이티브 스크롤에 맡긴다
   const drag = useRef({ down: false, moved: false, startX: 0, startScroll: 0 })
 
-  // 선택된 칩을 가로축 중앙으로 스크롤 — 최초 렌더 때 한 번만.
+  // 선택된 칩(기본값 포함)을 가로축 중앙으로 스크롤 — 최초 렌더 때 한 번만.
   // (매 클릭마다 재발동하면 자유 스크롤/드래그와 충돌해서 위치가 멋대로 튄다)
-  // 펼침 애니메이션 중 레이아웃이 늦게 잡힐 수 있어, 즉시 한 번 + 다음 프레임에 한 번 더 보정한다.
+  // 이 줄이 밑줄 탭으로 펼쳐지는 패널 안에 중첩돼 있으면 부모의 height 애니메이션이
+  // 끝나기 전엔 아직 최종 레이아웃이 아닐 수 있어, ResizeObserver로 크기가
+  // 바뀔 때마다(패널이 다 펼쳐질 때까지) 짧은 시간 동안 계속 재보정한다.
   useEffect(() => {
     const row = scroller.current
     if (!row) return
@@ -40,7 +42,14 @@ export function ChipRow({
     }
     center()
     const raf = requestAnimationFrame(center)
-    return () => cancelAnimationFrame(raf)
+    const ro = new ResizeObserver(center)
+    ro.observe(row)
+    const stopObserving = window.setTimeout(() => ro.disconnect(), 500)
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+      window.clearTimeout(stopObserving)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

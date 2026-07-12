@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import confetti from 'canvas-confetti'
 import { recommend, type CellState, type Person } from '../engine'
 import {
   adminSetConfirmedSlot,
@@ -161,6 +162,18 @@ export function MeetingPage() {
       // localStorage 차단(시크릿 모드 등) — 힌트만 이번 세션에서 사라지면 충분하다
     }
   }
+
+  // 확정 완결 화면에 진입할 때 컨페티를 한 번 터뜨린다.
+  // effectiveView는 아래에서 파생 상태로 다시 계산되므로, 훅은 조건부 return보다
+  // 앞에서 그 계산을 그대로 반복해 항상 같은 순서로 호출되게 한다.
+  const confettiFiredFor = useRef<string | null>(null)
+  useEffect(() => {
+    const isDoneView = (view ?? (meeting?.confirmed_slot ? 'done' : 'adjust')) === 'done'
+    if (!isDoneView || !meeting?.confirmed_slot) return
+    if (confettiFiredFor.current === meeting.confirmed_slot) return
+    confettiFiredFor.current = meeting.confirmed_slot
+    void confetti({ particleCount: 120, spread: 90, startVelocity: 45, origin: { y: 0.35 } })
+  }, [view, meeting?.confirmed_slot])
 
   // admin_key는 anon이 테이블에서 직접 읽을 수 없으므로, "이 meeting 객체에
   // admin_key가 채워져 있다" = "verifyAdminKey 검증을 이미 통과했다"와 같은 뜻이다.
@@ -830,6 +843,7 @@ export function MeetingPage() {
                 onCycleDay={cycleDay}
                 onCycleHour={cycleHour}
                 cascade={cascade}
+                hintCell={showGridHint && hours.length > 0 ? { d: 0, h: hours[0] } : null}
               />
             </div>
           )}

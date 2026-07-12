@@ -39,3 +39,25 @@ body {
   background: var(--color-app);
   color: var(--color-ink);
 }
+
+/* 앱 첫 진입 시 로고가 살짝 아래에서 떠오르며 나타나는 등장 애니메이션 */
+@keyframes logo-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-logo-in {
+  animation: logo-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-logo-in {
+    animation: none;
+  }
+}
