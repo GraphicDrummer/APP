@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useAnimationControls } from 'motion/react'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
@@ -33,25 +33,52 @@ const collapse = {
 
 type SlotKey = 'title' | 'dates' | 'hours' | 'duration' | 'deadline'
 
-// 문장 속 밑줄 친 탭 영역 — 누르면 그 자리 아래로 입력 UI가 펼쳐진다
+// 문장 속 밑줄 친 탭 영역 — 누르면 그 자리 아래로 입력 UI가 펼쳐진다.
+// hintActive가 true인 동안, 마운트 후 순서대로(hintIndex 기준) 살짝 떠올랐다
+// 내려오는 스태거 힌트를 한 번 재생해 "여기 누를 수 있어요"를 암시한다.
 function Slot({
   filled,
   active,
   onToggle,
   testId,
+  hintIndex,
+  hintActive = false,
   children,
 }: {
   filled: boolean
   active: boolean
   onToggle: () => void
   testId: string
+  hintIndex?: number
+  hintActive?: boolean
   children: React.ReactNode
 }) {
+  const controls = useAnimationControls()
+
+  useEffect(() => {
+    if (!hintActive || hintIndex === undefined) return
+    const t = window.setTimeout(() => {
+      void controls.start({
+        y: [0, -3, 0],
+        transition: { duration: 0.45, ease: 'easeInOut' },
+      })
+    }, 300 + hintIndex * 90)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 사용자가 상호작용해 hintActive가 꺼지면, 아직 재생 안 된(대기 중인) 힌트는
+  // 타임아웃이 알아서 취소되고, 재생 중인 힌트도 즉시 원위치로 멈춘다.
+  useEffect(() => {
+    if (!hintActive) controls.stop()
+  }, [hintActive, controls])
+
   return (
     <motion.button
       type="button"
       data-testid={testId}
       onClick={onToggle}
+      animate={controls}
       whileTap={press}
       transition={pressSpring}
       className={`rounded-md px-1 underline decoration-2 underline-offset-[5px] cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${
@@ -131,7 +158,13 @@ export function CreateMeetingPage() {
   // 문장형 폼: 지금 펼쳐진 밑줄 영역(하나만) / 장소 토글
   const [activeSlot, setActiveSlot] = useState<SlotKey | null>(null)
   const [locationOpen, setLocationOpen] = useState(false)
-  const toggleSlot = (k: SlotKey) => setActiveSlot((cur) => (cur === k ? null : k))
+  // 폼과 아직 한 번도 상호작용하지 않은 상태 — 밑줄 힌트·CTA 숨쉬기 힌트를 켜둔다.
+  // 첫 상호작용(슬롯 열기)과 동시에 꺼서 다시 재생되지 않는다.
+  const [hintActive, setHintActive] = useState(true)
+  const toggleSlot = (k: SlotKey) => {
+    setHintActive(false)
+    setActiveSlot((cur) => (cur === k ? null : k))
+  }
   // 시간대·소요시간은 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해
   // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"비는 시간")로 보여준다.
   const [hoursTouched, setHoursTouched] = useState(false)
@@ -396,7 +429,7 @@ export function CreateMeetingPage() {
           <div className="text-[18px] font-bold leading-[1.5] tracking-[-0.3px] space-y-1.5">
             {/* 새로운 회의, */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
-              <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')}>
+              <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')} hintIndex={0} hintActive={hintActive}>
                 {title.trim() || '새로운'}
               </Slot>
               <span>회의,</span>
@@ -417,7 +450,7 @@ export function CreateMeetingPage() {
 
             {/* 이 날짜들 중 */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
-              <Slot testId="slot-dates" filled={!!(dateStart && dateEnd)} active={activeSlot === 'dates'} onToggle={() => toggleSlot('dates')}>
+              <Slot testId="slot-dates" filled={!!(dateStart && dateEnd)} active={activeSlot === 'dates'} onToggle={() => toggleSlot('dates')} hintIndex={1} hintActive={hintActive}>
                 {dateStart && dateEnd ? `${fmtDate(dateStart)}~${fmtDate(dateEnd)}` : '이 날짜들'}
               </Slot>
               <span>중</span>
@@ -454,7 +487,7 @@ export function CreateMeetingPage() {
 
             {/* 이 시간대 사이에서 */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
-              <Slot testId="slot-hours" filled={hoursTouched} active={activeSlot === 'hours'} onToggle={() => toggleSlot('hours')}>
+              <Slot testId="slot-hours" filled={hoursTouched} active={activeSlot === 'hours'} onToggle={() => toggleSlot('hours')} hintIndex={2} hintActive={hintActive}>
                 {hoursTouched ? `${hhmm(hourStart)}~${hhmm(hourEnd)}` : '이 시간대'}
               </Slot>
               <span>사이에서</span>
@@ -477,7 +510,7 @@ export function CreateMeetingPage() {
 
             {/* 비는 시간을 찾을게요. */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
-              <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')}>
+              <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
                 {durationTouched ? `${durationSlots}시간` : '비는 시간'}
               </Slot>
               <span>을 찾을게요.</span>
@@ -514,6 +547,8 @@ export function CreateMeetingPage() {
                       filled={deadlineOpen && !!deadlineDate}
                       active={activeSlot === 'deadline'}
                       onToggle={() => toggleSlot('deadline')}
+                      hintIndex={4}
+                      hintActive={hintActive}
                     >
                       {deadlineOpen && deadlineDate ? `${fmtDate(deadlineDate)} ${hhmm(deadlineHour)}` : '이 때'}
                     </Slot>
@@ -593,6 +628,7 @@ export function CreateMeetingPage() {
               <TextInput
                 data-testid="organizer"
                 value={organizer}
+                onFocus={() => setHintActive(false)}
                 onChange={(e) => setOrganizer(e.target.value)}
                 placeholder="예: 감자"
               />
@@ -694,6 +730,7 @@ export function CreateMeetingPage() {
             data-testid="create-meeting"
             onClick={() => void submit()}
             disabled={saving}
+            breathe={hintActive && !saving}
             className="w-full"
           >
             {saving ? '만드는 중…' : '모임 생성하기'}

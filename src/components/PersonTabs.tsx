@@ -1,4 +1,5 @@
-import { motion } from 'motion/react'
+import { useEffect } from 'react'
+import { motion, useAnimationControls } from 'motion/react'
 import type { Person } from '../engine'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 
@@ -7,10 +8,57 @@ interface Props {
   selected: number
   onSelect: (index: number) => void
   onToggleRole: (index: number) => void
+  /** 첫 참여자의 역할 배지에 "탭 가능함" 한 번 흔들림 힌트를 재생한다 */
+  hintFirstRole?: boolean
+}
+
+// 역할 배지 — 처음 보일 때(hint=true) 딱 한 번 살짝 흔들려 탭 가능함을 암시한다
+function RoleTab({
+  active,
+  role,
+  onClick,
+  testId,
+  hint,
+}: {
+  active: boolean
+  role: Person['role']
+  onClick: () => void
+  testId: string
+  hint: boolean
+}) {
+  const controls = useAnimationControls()
+
+  useEffect(() => {
+    if (!hint) return
+    const t = window.setTimeout(() => {
+      void controls.start({
+        rotate: [0, -8, 8, -5, 0],
+        transition: { duration: 0.5, ease: 'easeInOut' },
+      })
+    }, 700)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hint])
+
+  return (
+    <motion.button
+      type="button"
+      data-testid={testId}
+      onClick={onClick}
+      animate={controls}
+      whileTap={press}
+      transition={pressSpring}
+      className={`rounded-full px-1.5 py-0.5 text-[9px] font-black cursor-pointer whitespace-nowrap ${
+        active ? 'bg-white/20 text-white' : role === 'required' ? 'bg-primary/10 text-primary' : 'bg-surface-sub text-ink-muted'
+      }`}
+    >
+      {role === 'required' ? '필참' : '선택'}
+    </motion.button>
+  )
 }
 
 // 참여자 칩 — 이름을 누르면 선택(다크 반전), 배지를 누르면 필참↔선택 전환
-export function PersonTabs({ people, selected, onSelect, onToggleRole }: Props) {
+export function PersonTabs({ people, selected, onSelect, onToggleRole, hintFirstRole = false }: Props) {
   return (
     <div className="flex gap-2 overflow-x-auto pb-2 -mx-[22px] px-[22px]">
       {people.map((p, i) => {
@@ -37,22 +85,13 @@ export function PersonTabs({ people, selected, onSelect, onToggleRole }: Props) 
             >
               {p.id}
             </motion.button>
-            <motion.button
-              type="button"
-              data-testid={`role-${p.id}`}
+            <RoleTab
+              active={active}
+              role={p.role}
               onClick={() => onToggleRole(i)}
-              whileTap={press}
-              transition={pressSpring}
-              className={`rounded-full px-1.5 py-0.5 text-[9px] font-black cursor-pointer whitespace-nowrap ${
-                active
-                  ? 'bg-white/20 text-white'
-                  : p.role === 'required'
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-surface-sub text-ink-muted'
-              }`}
-            >
-              {p.role === 'required' ? '필참' : '선택'}
-            </motion.button>
+              testId={`role-${p.id}`}
+              hint={hintFirstRole && i === 0}
+            />
           </motion.div>
         )
       })}

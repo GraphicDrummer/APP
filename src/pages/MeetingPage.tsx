@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import confetti from 'canvas-confetti'
 import { DAYS, recommend, type CellState, type Person } from '../engine'
 import {
@@ -130,6 +130,7 @@ function OtherCalendarIcon() {
 }
 
 export function MeetingPage() {
+  const navigate = useNavigate()
   const { code } = useParams<{ code: string }>()
   const [searchParams] = useSearchParams()
   const adminKeyFromUrl = searchParams.get('adminKey')
@@ -145,6 +146,9 @@ export function MeetingPage() {
   const [copied, setCopied] = useState(false)
   const [cascade, setCascade] = useState<CascadeSignal | null>(null)
   const [view, setView] = useState<'adjust' | 'done' | null>(null)
+  // 참여자가 저장 완료 후 보게 되는 완료 화면 — 그리드를 대신 보여준다.
+  // "← 다시 칠하기"나 좌상단 뒤로가기로 그리드로 돌아갈 수 있다.
+  const [showSavedPanel, setShowSavedPanel] = useState(false)
   const [showGridHint, setShowGridHint] = useState(() => {
     try {
       return localStorage.getItem(GRID_HINT_SEEN_KEY) === null
@@ -343,7 +347,9 @@ export function MeetingPage() {
         slotToIso(monday, d, h),
       )
       setMeeting(updated)
-      setView('adjust')
+      // 확정하면 자동으로 확정 완결 화면으로 이동 — 매번 "확정" 탭을 직접
+      // 누를 필요 없게. 화면 전환은 done 뷰의 기존 Enter 진입 애니메이션이 맡는다.
+      setView('done')
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
@@ -452,6 +458,7 @@ export function MeetingPage() {
       })
       setRows((prev) => prev.map((r, i) => (i === selected ? updated : r)))
       setSaveState('saved')
+      setShowSavedPanel(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
       setSaveState('idle')
@@ -493,6 +500,7 @@ export function MeetingPage() {
             current={2}
             clickable={[false, true, false]}
             onStepClick={() => setView('adjust')}
+            onBack={() => setView('adjust')}
           />
         </div>
         <div className="max-w-[430px] mx-auto px-[22px] pt-8 pb-4 text-center">
@@ -618,6 +626,7 @@ export function MeetingPage() {
           current={1}
           clickable={[false, false, !!meeting?.confirmed_slot]}
           onStepClick={() => setView('done')}
+          onBack={showSavedPanel ? () => setShowSavedPanel(false) : () => navigate('/')}
         />
       </div>
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
@@ -826,51 +835,107 @@ export function MeetingPage() {
             onSelect={(i) => {
               setSelected(i)
               setSaveState('idle')
+              setShowSavedPanel(false)
             }}
             onToggleRole={toggleRole}
+            hintFirstRole={showGridHint}
           />
 
           {people[selected] && (
             <div className="mt-2.5">
-              <AnimatePresence initial={false}>
-                {showLikelyHint && topLikely && (
-                  <motion.p
-                    key="likely-hint"
-                    data-testid="likely-hint"
-                    initial={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto', marginBottom: 10 }}
-                    exit={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
-                    transition={spring}
-                    className="overflow-hidden text-[12.5px] font-bold text-primary bg-primary/8 rounded-field px-3 py-2 text-center"
+              {showSavedPanel ? (
+                <motion.div
+                  key="saved-panel"
+                  data-testid="saved-panel"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={spring}
+                  className="rounded-card border border-line bg-surface shadow-card p-6 text-center"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ ...spring, delay: 0.05 }}
+                    className="mx-auto w-12 h-12 rounded-full bg-confirm flex items-center justify-center"
                   >
-                    지금까지 입력 기준, {DAYS[topLikely.d]}요일 {hhmm(topLikely.h)}가 유력해요
-                  </motion.p>
-                )}
-              </AnimatePresence>
-              <AnimatePresence initial={false}>
-                {showGridHint && (
+                    <CheckIcon size={22} />
+                  </motion.div>
                   <motion.p
-                    key="grid-hint"
-                    data-testid="grid-hint"
-                    initial={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
-                    animate={{ opacity: 1, y: 0, height: 'auto', marginBottom: 10 }}
-                    exit={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
-                    transition={spring}
-                    className="overflow-hidden text-[12.5px] font-bold text-primary bg-primary/8 rounded-field px-3 py-2 text-center"
+                    initial={riseIn.initial}
+                    animate={riseIn.animate}
+                    transition={{ ...spring, delay: 0.15 }}
+                    className="text-[15px] font-black mt-3"
                   >
-                    칸을 눌러 되는 시간을 칠해보세요. 애매하면 한 번 더!
+                    {people[selected].id}님의 시간을 저장했어요!
                   </motion.p>
-                )}
-              </AnimatePresence>
-              <AvailabilityGrid
-                person={people[selected]}
-                onCycleCell={cycleCell}
-                hours={hours}
-                onCycleDay={cycleDay}
-                onCycleHour={cycleHour}
-                cascade={cascade}
-                hintCell={showGridHint && hours.length > 0 ? { d: 0, h: hours[0] } : null}
-              />
+                  <motion.p
+                    initial={riseIn.initial}
+                    animate={riseIn.animate}
+                    transition={{ ...spring, delay: 0.25 }}
+                    className="text-[12.5px] font-bold text-ink-muted mt-1.5"
+                  >
+                    {pendingNames.length > 0
+                      ? pendingNames.length === 1
+                        ? `${pendingNames[0]}님 입력만 기다리면 돼요!`
+                        : `아직 ${pendingNames.length}명이 고민 중이에요 🐭`
+                      : '모두 입력을 마쳤어요! 위에서 추천 시간을 확인해보세요.'}
+                  </motion.p>
+                  <motion.button
+                    type="button"
+                    data-testid="back-to-grid"
+                    initial={riseIn.initial}
+                    animate={riseIn.animate}
+                    transition={{ ...spring, delay: 0.35 }}
+                    whileTap={press}
+                    onClick={() => setShowSavedPanel(false)}
+                    className="mt-4 text-[12.5px] font-bold text-primary cursor-pointer"
+                  >
+                    ← 다시 칠하기
+                  </motion.button>
+                </motion.div>
+              ) : (
+                <>
+                  <AnimatePresence initial={false}>
+                    {showLikelyHint && topLikely && (
+                      <motion.p
+                        key="likely-hint"
+                        data-testid="likely-hint"
+                        initial={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto', marginBottom: 10 }}
+                        exit={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
+                        transition={spring}
+                        className="overflow-hidden text-[12.5px] font-bold text-primary bg-primary/8 rounded-field px-3 py-2 text-center"
+                      >
+                        지금까지 입력 기준, {DAYS[topLikely.d]}요일 {hhmm(topLikely.h)}가 유력해요
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                  <AnimatePresence initial={false}>
+                    {showGridHint && (
+                      <motion.p
+                        key="grid-hint"
+                        data-testid="grid-hint"
+                        initial={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
+                        animate={{ opacity: 1, y: 0, height: 'auto', marginBottom: 10 }}
+                        exit={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
+                        transition={spring}
+                        className="overflow-hidden text-[12.5px] font-bold text-primary bg-primary/8 rounded-field px-3 py-2 text-center"
+                      >
+                        칸을 눌러 되는 시간을 칠해보세요. 애매하면 한 번 더!
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                  <AvailabilityGrid
+                    person={people[selected]}
+                    onCycleCell={cycleCell}
+                    hours={hours}
+                    onCycleDay={cycleDay}
+                    onCycleHour={cycleHour}
+                    cascade={cascade}
+                    hintCell={showGridHint && hours.length > 0 ? { d: 0, h: hours[0] } : null}
+                  />
+                </>
+              )}
             </div>
           )}
 
@@ -886,6 +951,7 @@ export function MeetingPage() {
             data-testid="save-availability"
             onClick={() => void save()}
             disabled={saveState === 'saving'}
+            breathe={saveState === 'idle'}
             className="w-full"
           >
             {saveState === 'saving'

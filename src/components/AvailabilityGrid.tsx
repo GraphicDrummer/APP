@@ -75,9 +75,9 @@ function Cell({
     if (!hint) return
     const t = window.setTimeout(() => {
       void controls.start({
-        y: [0, -4, 1, 0],
-        scale: [1, 1.08, 0.98, 1],
-        transition: { duration: 0.6, times: [0, 0.35, 0.7, 1], ease: 'easeInOut' },
+        y: [0, -6, 1, 0],
+        scale: [1, 1.16, 0.96, 1],
+        transition: { duration: 0.65, times: [0, 0.35, 0.7, 1], ease: 'easeInOut' },
       })
     }, 550)
     return () => window.clearTimeout(t)
@@ -98,6 +98,53 @@ function Cell({
         className={`block w-full h-[41px] rounded-[17px] border-2 cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[state]}`}
       />
     </td>
+  )
+}
+
+// 요일/시간 헤더 버튼 — 처음 보일 때 딱 한 번 살짝 밝아졌다 돌아오며 "눌러서
+// 일괄 변경 가능함"을 암시한다(hint=true인 헤더 하나에만 적용).
+function HeaderCell({
+  testId,
+  ariaLabel,
+  onClick,
+  style,
+  hint,
+  children,
+}: {
+  testId: string
+  ariaLabel: string
+  onClick: () => void
+  style: string
+  hint: boolean
+  children: React.ReactNode
+}) {
+  const controls = useAnimationControls()
+
+  useEffect(() => {
+    if (!hint) return
+    const t = window.setTimeout(() => {
+      void controls.start({
+        filter: ['brightness(1)', 'brightness(1.35)', 'brightness(1)'],
+        transition: { duration: 0.55, ease: 'easeInOut' },
+      })
+    }, 550)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hint])
+
+  return (
+    <motion.button
+      type="button"
+      data-testid={testId}
+      aria-label={ariaLabel}
+      onClick={onClick}
+      animate={controls}
+      whileTap={press}
+      transition={pressSpring}
+      className={`w-full h-[30px] rounded-[13px] text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
+    >
+      {children}
+    </motion.button>
   )
 }
 
@@ -186,17 +233,15 @@ export function AvailabilityGrid({
                   return (
                     <th key={d}>
                       {onCycleDay ? (
-                        <motion.button
-                          type="button"
-                          data-testid={`day-${i}`}
-                          aria-label={`${d}요일 전체 순환`}
+                        <HeaderCell
+                          testId={`day-${i}`}
+                          ariaLabel={`${d}요일 전체 순환`}
                           onClick={() => onCycleDay(i)}
-                          whileTap={press}
-                          transition={pressSpring}
-                          className={`w-full h-[30px] rounded-[13px] text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
+                          style={style}
+                          hint={!!hintCell && i === 0}
                         >
                           {d}
-                        </motion.button>
+                        </HeaderCell>
                       ) : (
                         <span className="block text-[11px] font-black text-ink">{d}</span>
                       )}
@@ -213,17 +258,15 @@ export function AvailabilityGrid({
                   <tr key={h}>
                     <td>
                       {onCycleHour ? (
-                        <motion.button
-                          type="button"
-                          data-testid={`hour-${h}`}
-                          aria-label={`${hhmm(h)} 전체 순환`}
+                        <HeaderCell
+                          testId={`hour-${h}`}
+                          ariaLabel={`${hhmm(h)} 전체 순환`}
                           onClick={() => onCycleHour(h)}
-                          whileTap={press}
-                          transition={pressSpring}
-                          className={`w-full h-[30px] rounded-[13px] text-[10px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${hourStyle}`}
+                          style={hourStyle}
+                          hint={!!hintCell && row === 0}
                         >
                           {hhmm(h)}
-                        </motion.button>
+                        </HeaderCell>
                       ) : (
                         <span className="block text-center text-[10px] font-black text-ink">
                           {hhmm(h)}

@@ -1,8 +1,9 @@
 // 공통 UI 프리미티브 — index.css의 디자인 토큰(@theme)에만 의존한다.
 // 개별 화면은 다음 단계에서 이 컴포넌트/클래스로 교체된다.
 
+import { useEffect } from 'react'
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
-import { motion, type HTMLMotionProps } from 'motion/react'
+import { motion, useAnimationControls, type HTMLMotionProps } from 'motion/react'
 import { press, pressSpring, spring, screenIn } from '../lib/motion'
 
 // ---------- 공통 클래스 ----------
@@ -28,12 +29,31 @@ const BUTTON_VARIANT: Record<ButtonVariant, string> = {
 
 interface ButtonProps extends HTMLMotionProps<'button'> {
   variant?: ButtonVariant
+  /** true면 idle 상태에서 아주 미세하게 숨쉬듯 scale 변화(0.98~1)로 "여기 누를 수 있어요"를
+   *  암시한다. 상호작용/상태 변화로 꺼야 할 때는 호출부에서 false로 넘긴다. */
+  breathe?: boolean
 }
 
-export function Button({ variant = 'primary', className = '', ...rest }: ButtonProps) {
+export function Button({ variant = 'primary', className = '', breathe = false, ...rest }: ButtonProps) {
+  const controls = useAnimationControls()
+
+  // whileTap과 별개의 컨트롤로 다뤄서, 누르는 스프링(pressSpring)과 숨쉬기 루프의
+  // transition이 서로 덮어쓰지 않게 한다. breathe가 꺼지면 즉시 원래 크기로 멈춘다.
+  useEffect(() => {
+    if (breathe) {
+      void controls.start({
+        scale: [1, 0.98, 1],
+        transition: { duration: 1, repeat: Infinity, ease: 'easeInOut' },
+      })
+    } else {
+      void controls.start({ scale: 1, transition: { duration: 0.2 } })
+    }
+  }, [breathe, controls])
+
   return (
     <motion.button
       type="button"
+      animate={controls}
       whileTap={press}
       transition={pressSpring}
       className={`rounded-field px-4 py-3.5 text-[15px] font-extrabold cursor-pointer disabled:opacity-50 ${BUTTON_VARIANT[variant]} ${className}`}
@@ -109,18 +129,36 @@ export function RoleBadge({
   role,
   onClick,
   variant = 'solid',
+  hint = false,
   ...rest
 }: {
   role: 'required' | 'optional'
   onClick?: () => void
   variant?: 'solid' | 'tint'
+  /** 처음 보일 때 딱 한 번 살짝 흔들려 탭 가능함을 암시한다 */
+  hint?: boolean
 } & HTMLMotionProps<'button'>) {
+  const controls = useAnimationControls()
   const required =
     variant === 'solid' ? 'bg-primary text-white' : 'bg-primary/10 text-primary'
+
+  useEffect(() => {
+    if (!hint) return
+    const t = window.setTimeout(() => {
+      void controls.start({
+        rotate: [0, -8, 8, -5, 0],
+        transition: { duration: 0.5, ease: 'easeInOut' },
+      })
+    }, 700)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hint])
+
   return (
     <motion.button
       type="button"
       onClick={onClick}
+      animate={controls}
       whileTap={press}
       transition={pressSpring}
       className={`rounded-full px-2 py-0.5 text-[10px] font-black cursor-pointer ${

@@ -1,33 +1,21 @@
 // 시간 범위(시작~끝) 선택 — 세로로 긴 select 대신 좌우 스크롤 가로 칩.
 // 표기는 앱 공통 규칙(콜론 + 24시간제)을 따른다.
 
+import { useEffect, useRef } from 'react'
 import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
 import { motion } from 'motion/react'
 
-// 선택된 값 좌우로 몇 칸씩 보여줄지 — 2면 최대 5칸(선택값 포함)이 떠서
-// 이 앱의 칩 크기(~57px+gap) 기준 좁은 화면 스크롤 컨테이너 폭(~300px)에도
-// 스크롤 없이 딱 들어간다. 더 먼 값은 칩을 눌러 그쪽으로 중심을 옮겨가며 찾는다.
-const WINDOW_RADIUS = 2
-
-const chipBaseCls = 'flex-none rounded-full px-3 py-1.5 text-[12px] font-bold'
-
-/** 실제 칩과 폭이 똑같은 투명 자리표시자 — 값이 배열 끝에 가까워 대칭이 안 맞을 때
- *  반대쪽에 채워 넣어서, 선택된 칩이 항상 컨테이너 한가운데 오도록 만든다. */
-function Spacer() {
-  return (
-    <span aria-hidden className={`${chipBaseCls} invisible pointer-events-none`}>
-      00:00
-    </span>
-  )
-}
+// 칩 폭을 고정해야 좌우 패딩(컨테이너 절반 - 칩 절반)과 스냅 위치 계산이 정확해진다.
+const CHIP_WIDTH = 58
 
 /** 가로 스크롤 시간 칩 한 줄 — 시간 범위·마감 시각 등에서 공유하는 단일 인터랙션.
  *
- * 선택값이 항상 중앙에 보이도록 스크롤 위치를 JS로 계산/보정하지 않는다 — 대신
- * 선택값 기준 앞뒤 WINDOW_RADIUS칸만 렌더링하고 flex justify-center로 가운데
- * 정렬한다. 배열 끝이라 한쪽이 모자라면 투명 Spacer로 채워 대칭을 유지한다.
- * (여러 스크롤 기반 접근을 실기기에서 검증했지만 전부 실패해 이 방식으로 교체함)
+ * 전체 칩을 다 렌더한다(윈도잉 없음). 스크롤 컨테이너 좌우에 "컨테이너 절반 -
+ * 칩 절반" 만큼 CSS padding을 줘서, 어떤 칩이든 스크롤로 중앙까지 데려올 수
+ * 있게 만들고(scroll-snap으로 딱 맞게 정렬), 선택값을 처음 보여줄 때만 JS로
+ * 스크롤 위치를 한 번 그 칩으로 맞춘다 — 이후로는 스크롤 위치를 다시 건드리지
+ * 않는다(자유 스크롤/드래그와 충돌 없음).
  */
 export function ChipRow({
   label,
@@ -46,12 +34,22 @@ export function ChipRow({
   /** true를 반환하는 칩은 위치는 그대로 두고 흐리게(opacity) + 선택 불가 처리 */
   isDisabled?: (v: number) => boolean
 }) {
-  const selectedIdx = options.indexOf(value)
-  const windowStart = Math.max(0, selectedIdx - WINDOW_RADIUS)
-  const windowEnd = Math.min(options.length, selectedIdx + WINDOW_RADIUS + 1)
-  const windowed = options.slice(windowStart, windowEnd)
-  const leadingSpacers = WINDOW_RADIUS - (selectedIdx - windowStart)
-  const trailingSpacers = WINDOW_RADIUS - (windowEnd - 1 - selectedIdx)
+  const scroller = useRef<HTMLDivElement>(null)
+
+  // 마운트 시 1회만 — 선택된 칩을 컨테이너 중앙으로 스크롤한다.
+  // getBoundingClientRect 기반 뷰포트 좌표 차이로 계산해 offsetParent(가장
+  // 가까운 positioned 조상) 기준 좌표계 문제에 영향받지 않는다.
+  useEffect(() => {
+    const row = scroller.current
+    if (!row) return
+    const chip = row.querySelector<HTMLElement>(`[data-hour="${value}"]`)
+    if (!chip) return
+    const rowRect = row.getBoundingClientRect()
+    const chipRect = chip.getBoundingClientRect()
+    const delta = chipRect.left + chipRect.width / 2 - (rowRect.left + rowRect.width / 2)
+    row.scrollLeft += delta
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div className="flex items-center gap-2">
@@ -59,14 +57,12 @@ export function ChipRow({
         <span className="flex-none w-8 text-[11px] font-black text-ink-muted/60">{label}</span>
       )}
       <div
-        key={value}
+        ref={scroller}
         data-testid={testId}
-        className="flex flex-1 justify-center gap-1.5 overflow-x-auto py-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={{ paddingLeft: `calc(50% - ${CHIP_WIDTH / 2}px)`, paddingRight: `calc(50% - ${CHIP_WIDTH / 2}px)` }}
+        className="flex flex-1 gap-1.5 overflow-x-auto py-0.5 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {Array.from({ length: leadingSpacers }, (_, i) => (
-          <Spacer key={`lead-${i}`} />
-        ))}
-        {windowed.map((h) => {
+        {options.map((h) => {
           const disabled = isDisabled?.(h) ?? false
           return (
             <motion.button
@@ -78,7 +74,8 @@ export function ChipRow({
               onClick={() => onChange(h)}
               whileTap={disabled ? undefined : press}
               transition={pressSpring}
-              className={`${chipBaseCls} transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
+              style={{ width: CHIP_WIDTH }}
+              className={`flex-none snap-center rounded-full py-1.5 text-[12px] font-bold text-center transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
                 disabled
                   ? 'opacity-30 cursor-not-allowed bg-white border border-line text-ink-muted'
                   : h === value
@@ -90,9 +87,6 @@ export function ChipRow({
             </motion.button>
           )
         })}
-        {Array.from({ length: trailingSpacers }, (_, i) => (
-          <Spacer key={`trail-${i}`} />
-        ))}
       </div>
     </div>
   )
