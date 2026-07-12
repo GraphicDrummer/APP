@@ -519,7 +519,7 @@ export function MeetingPage() {
               </motion.div>
               <div>
                 <p className="text-[11px] font-black tracking-[2.2px] uppercase text-white/70">
-                  MEETING CONFIRMED
+                  탕탕! 회의 소집 완료 🐯
                 </p>
                 <p className="text-[15px] font-bold text-white/90 mt-1">{meeting.title}</p>
               </div>
@@ -824,11 +824,11 @@ export function MeetingPage() {
               <p className="text-[12.5px] font-bold text-soft-ink bg-soft-bg/60 rounded-field px-3 py-2">
                 {pendingNames.length === 1
                   ? `모두가 ${pendingNames[0]}님만 기다리고 있어요!`
-                  : `아직 ${pendingNames.length}명이 고민 중이에요 🐭`}
+                  : `아직 ${pendingNames.length}명의 동료들이 눈치 보는 중 👀`}
               </p>
             )}
             <p className="font-galmuri11 text-[13px] font-bold text-ink-muted px-0.5">
-              내 이름을 누르고, 되는 시간을 칠해주세요. 애매하면 노랑으로!
+              내 이름을 누르고, 되는 날만 콕 집어 모두를 구원해 주세요! 애매하면 주황으로!
             </p>
           </div>
           <PersonTabs
