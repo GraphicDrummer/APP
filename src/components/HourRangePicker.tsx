@@ -12,10 +12,10 @@ const CHIP_WIDTH = 58
 /** 가로 스크롤 시간 칩 한 줄 — 시간 범위·마감 시각 등에서 공유하는 단일 인터랙션.
  *
  * 전체 칩을 다 렌더한다(윈도잉 없음). 스크롤 컨테이너 좌우에 "컨테이너 절반 -
- * 칩 절반" 만큼 CSS padding을 줘서, 어떤 칩이든 스크롤로 중앙까지 데려올 수
- * 있게 만들고(scroll-snap으로 딱 맞게 정렬), 선택값을 처음 보여줄 때만 JS로
- * 스크롤 위치를 한 번 그 칩으로 맞춘다 — 이후로는 스크롤 위치를 다시 건드리지
- * 않는다(자유 스크롤/드래그와 충돌 없음).
+ * 칩 절반" 만큼 CSS padding을 줘서 어떤 칩이든 스크롤로 중앙까지 데려올 수
+ * 있게 만들고, 선택값을 처음 보여줄 때만 JS로 스크롤 위치를 한 번 그 칩으로
+ * 맞춘다 — 이후로는 스크롤 위치를 다시 건드리지 않는다. 스크롤은 스냅 없이
+ * 완전히 자유롭게 움직인다(끊김 방지).
  */
 export function ChipRow({
   label,
@@ -92,7 +92,7 @@ export function ChipRow({
         onPointerUp={endDrag}
         onPointerLeave={endDrag}
         style={{ paddingLeft: `calc(50% - ${CHIP_WIDTH / 2}px)`, paddingRight: `calc(50% - ${CHIP_WIDTH / 2}px)` }}
-        className="flex flex-1 min-w-0 gap-1.5 overflow-x-scroll overflow-y-hidden py-0.5 snap-x snap-proximity touch-pan-x cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex flex-1 min-w-0 gap-1.5 overflow-x-scroll overflow-y-hidden py-0.5 touch-pan-x cursor-grab active:cursor-grabbing [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {options.map((h) => {
           const disabled = isDisabled?.(h) ?? false
@@ -110,7 +110,7 @@ export function ChipRow({
               whileTap={disabled ? undefined : press}
               transition={pressSpring}
               style={{ width: CHIP_WIDTH }}
-              className={`flex-none snap-center border-2 border-line rounded-full py-1.5 text-[12px] font-bold text-center transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
+              className={`flex-none border-2 border-line rounded-full py-1.5 text-[12px] font-bold text-center transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
                 disabled
                   ? 'opacity-30 cursor-not-allowed bg-white text-ink-muted'
                   : h === value

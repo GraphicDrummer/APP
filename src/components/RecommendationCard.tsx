@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { DAYS, key, type RecommendResult, type WindowEval } from '../engine'
 import { hhmm } from '../lib/slots'
-import { characterIconPath, characterIconSrcSet } from '../lib/characters'
+import { CharacterIcon } from './CharacterIcon'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 
 interface Props {
@@ -195,19 +195,7 @@ export function RecommendationCard({
                   data-testid="bottleneck"
                   className="flex items-start gap-2 bg-soft-bg/50 border border-soft rounded-field p-4"
                 >
-                  {characterIconPath(bottleneckCharacter) && (
-                    <img
-                      data-testid="bottleneck-character"
-                      src={characterIconPath(bottleneckCharacter) ?? undefined}
-                      srcSet={characterIconSrcSet(bottleneckCharacter)}
-                      alt=""
-                      aria-hidden
-                      className="w-6 h-6 shrink-0 object-contain"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
-                    />
-                  )}
+                  <CharacterIcon data-testid="bottleneck-character" code={bottleneckCharacter} size={24} />
                   <p className="text-[11px] font-bold text-soft-ink leading-[1.6]">
                     💡 <b className="font-black">{R.bottleneck}</b>님만 시간을 내주시면 가능한
                     시간이 <b className="font-black">{R.bestGain}</b>개 더 생겨요!

@@ -2,9 +2,16 @@ import { useEffect } from 'react'
 import { motion, useAnimationControls } from 'motion/react'
 import type { Person } from '../engine'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
+import { CharacterIcon, CharacterAvatarStack } from './CharacterIcon'
+
+/** PersonTabs 표시용 — engine의 Person에 캐릭터/제출 여부를 얹는다 */
+export interface PersonTabInfo extends Person {
+  character?: string | null
+  submitted?: boolean
+}
 
 interface Props {
-  people: Person[]
+  people: PersonTabInfo[]
   selected: number
   onSelect: (index: number) => void
   onToggleRole: (index: number) => void
@@ -57,44 +64,58 @@ function RoleTab({
   )
 }
 
-// 참여자 칩 — 이름을 누르면 선택(다크 반전), 배지를 누르면 필참↔선택 전환
+// 참여자 칩 — 이름을 누르면 선택(다크 반전), 배지를 누르면 필참↔선택 전환.
+// 완료(제출)한 참여자는 위에 아이콘 무리로 따로 모아 한눈에 보여주고, 칩 목록에서
+// 아직 제출 전인 참여자는(선택 중이 아니면) 흐리게 표시해 "누가 남았는지"를 드러낸다.
 export function PersonTabs({ people, selected, onSelect, onToggleRole, hintFirstRole = false }: Props) {
+  const completed = people.filter((p) => p.submitted)
+
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 -mx-[22px] px-[22px]">
-      {people.map((p, i) => {
-        const active = i === selected
-        return (
-          <motion.div
-            key={p.id}
-            initial={riseIn.initial}
-            animate={riseIn.animate}
-            transition={{ ...spring, delay: i * STAGGER }}
-            className={`flex-none flex items-center gap-1.5 rounded-field border pl-3 pr-2 py-2.5 transition-colors duration-[120ms] motion-reduce:transition-none ${
-              active ? 'bg-ink border-ink' : 'bg-white border-line'
-            }`}
-          >
-            <motion.button
-              type="button"
-              data-testid={`person-${p.id}`}
-              onClick={() => onSelect(i)}
-              whileTap={press}
-              transition={pressSpring}
-              className={`font-galmuri11 text-[13px] font-black cursor-pointer whitespace-nowrap ${
-                active ? 'text-white' : 'text-ink'
-              }`}
+    <div>
+      {completed.length > 0 && (
+        <div className="flex items-center gap-2 mb-2.5 px-0.5">
+          <CharacterAvatarStack codes={completed.map((p) => p.character)} size={24} />
+          <span className="text-[10.5px] font-bold text-ink-muted/70">{completed.length}명 완료</span>
+        </div>
+      )}
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-[22px] px-[22px]">
+        {people.map((p, i) => {
+          const active = i === selected
+          const dim = p.submitted === false && !active
+          return (
+            <motion.div
+              key={p.id}
+              initial={riseIn.initial}
+              animate={riseIn.animate}
+              transition={{ ...spring, delay: i * STAGGER }}
+              className={`flex-none flex items-center gap-1.5 rounded-field border pl-2.5 pr-2 py-2.5 transition-[opacity,background-color,border-color] duration-[120ms] motion-reduce:transition-none ${
+                active ? 'bg-ink border-ink' : 'bg-white border-line'
+              } ${dim ? 'opacity-40' : ''}`}
             >
-              {p.id}
-            </motion.button>
-            <RoleTab
-              active={active}
-              role={p.role}
-              onClick={() => onToggleRole(i)}
-              testId={`role-${p.id}`}
-              hint={hintFirstRole && i === 0}
-            />
-          </motion.div>
-        )
-      })}
+              <CharacterIcon code={p.character} size={18} />
+              <motion.button
+                type="button"
+                data-testid={`person-${p.id}`}
+                onClick={() => onSelect(i)}
+                whileTap={press}
+                transition={pressSpring}
+                className={`font-galmuri11 text-[13px] font-black cursor-pointer whitespace-nowrap ${
+                  active ? 'text-white' : 'text-ink'
+                }`}
+              >
+                {p.id}
+              </motion.button>
+              <RoleTab
+                active={active}
+                role={p.role}
+                onClick={() => onToggleRole(i)}
+                testId={`role-${p.id}`}
+                hint={hintFirstRole && i === 0}
+              />
+            </motion.div>
+          )
+        })}
+      </div>
     </div>
   )
 }

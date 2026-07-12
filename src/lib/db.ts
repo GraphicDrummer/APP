@@ -184,6 +184,8 @@ export interface AddParticipantInput {
   meetingId: string
   name: string
   role?: Role
+  /** 생략하면 서버에서 무작위 배정. 생성 폼처럼 미리 화면에 보여준 캐릭터가 있으면 그대로 넘긴다 */
+  character?: string
 }
 
 export async function addParticipant(input: AddParticipantInput): Promise<ParticipantRow> {
@@ -195,8 +197,8 @@ export async function addParticipant(input: AddParticipantInput): Promise<Partic
         name: input.name,
         role: input.role ?? 'required',
         submitted_at: null,
-        // 재미로 배정하는 캐릭터 — 13종 중 무작위 하나. 병목 안내 문구 옆 아이콘에 쓰인다.
-        character: randomCharacter(),
+        // 재미로 배정하는 캐릭터 — 13종 중 무작위 하나. 참여자 칩/병목 안내 아이콘에 쓰인다.
+        character: input.character ?? randomCharacter(),
       })
       .select()
       .single(),

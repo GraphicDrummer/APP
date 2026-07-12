@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion, useAnimationControls } from 'motion/react'
+import { AnimatePresence, motion, MotionConfig, useAnimationControls } from 'motion/react'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
+import { randomCharacter, withCharacterIcons, type ParticipantCharacter } from '../lib/characters'
+import { CharacterIcon } from '../components/CharacterIcon'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { Button, Enter, Field, LabeledRow, RoleBadge, TextInput, cardCls } from '../components/ui'
@@ -12,6 +14,7 @@ import { hhmm } from '../lib/slots'
 interface DraftPerson {
   name: string
   role: Role
+  character: ParticipantCharacter
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -73,7 +76,8 @@ function Slot({
     if (!hintActive) controls.stop()
   }, [hintActive, controls])
 
-  return (
+  // 색 의미: 채워짐(filled) = 파랑(완료), 빈 상태/플레이스홀더 = 주황(미정)
+  const button = (
     <motion.button
       type="button"
       data-testid={testId}
@@ -85,13 +89,17 @@ function Slot({
         active
           ? 'text-primary bg-primary/10 decoration-primary'
           : filled
-            ? 'text-accent decoration-accent'
-            : 'text-primary decoration-primary'
+            ? 'text-primary decoration-primary'
+            : 'text-accent decoration-accent'
       }`}
     >
       {children}
     </motion.button>
   )
+
+  // 힌트 스태거는 기능적 목적(입력 유도)이 있는 모션이라, 앱 전역 reducedMotion="user"와
+  // 무관하게 항상 재생되도록 예외 처리한다 — AvailabilityGrid의 힌트 모션과 같은 이유.
+  return hintActive ? <MotionConfig reducedMotion="never">{button}</MotionConfig> : button
 }
 
 // 밑줄 영역 바로 아래에서 펼쳐지는 입력 패널 — flex-wrap 안에서 w-full이라 그 자리에서 줄바꿈되어 등장.
@@ -182,7 +190,7 @@ export function CreateMeetingPage() {
   const addPerson = () => {
     const name = newName.trim()
     if (!name || people.some((p) => p.name === name)) return
-    setPeople([...people, { name, role: 'required' }])
+    setPeople([...people, { name, role: 'required', character: randomCharacter() }])
     setNewName('')
   }
 
@@ -228,7 +236,7 @@ export function CreateMeetingPage() {
           : undefined,
       })
       for (const p of people) {
-        await addParticipant({ meetingId: meeting.id, name: p.name, role: p.role })
+        await addParticipant({ meetingId: meeting.id, name: p.name, role: p.role, character: p.character })
       }
 
       const baseUrl = window.location.origin
@@ -315,7 +323,7 @@ export function CreateMeetingPage() {
               </svg>
             </motion.div>
             <p className="text-[13px] font-bold text-ink-muted mt-4">모임이 만들어졌어요</p>
-            <h1 className="text-[22.5px] font-black tracking-[-1.1px] mt-1">{title}</h1>
+            <h1 className="text-[22.5px] font-black tracking-[-1.1px] mt-1">{withCharacterIcons(title)}</h1>
             <p className="text-[13px] text-ink-muted mt-1">
               {dateStart} ~ {dateEnd} · {durationSlots}시간
             </p>
@@ -404,14 +412,14 @@ export function CreateMeetingPage() {
                   className="flex items-center justify-between py-2"
                 >
                   <span className="flex items-center gap-2.5">
-                    <span className="w-[26px] h-[26px] rounded-full bg-surface-sub text-ink-muted text-[11px] font-black flex items-center justify-center">
-                      {p.name[0]}
+                    <span className="w-[26px] h-[26px] rounded-full bg-surface-sub flex items-center justify-center overflow-hidden">
+                      <CharacterIcon code={p.character} size={22} />
                     </span>
                     <span className="text-[13px] font-bold">{p.name}</span>
                   </span>
                   <span className="flex items-center gap-2">
                     <RoleBadge role={p.role} variant="tint" />
-                    <span className="text-[10px] font-bold text-ink-muted/50">🐭 고민 중</span>
+                    <span className="text-[10px] font-bold text-ink-muted/50">고민 중</span>
                   </span>
                 </motion.li>
               ))}
@@ -549,7 +557,7 @@ export function CreateMeetingPage() {
             {/* 비는 시간을 찾을게요. — 버튼을 눌러야 실제 값으로 반영(플레이스홀더 유지) */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
-                {durationTouched ? `${durationSlots}시간` : '비는 시간'}
+                {durationTouched ? `${durationSlots}시간` : '딱 맞는 시간'}
               </Slot>
               <span>을 찾을게요.</span>
               <AnimatePresence initial={false}>
@@ -693,8 +701,9 @@ export function CreateMeetingPage() {
                     initial={riseIn.initial}
                     animate={riseIn.animate}
                     transition={{ ...spring, delay: i * STAGGER }}
-                    className="inline-flex items-center gap-1.5 bg-surface border border-line rounded-field pl-3 pr-2 py-2"
+                    className="inline-flex items-center gap-1.5 bg-surface border border-line rounded-field pl-2.5 pr-2 py-2"
                   >
+                    <CharacterIcon code={p.character} size={24} />
                     <span className="text-[13px] font-bold">{p.name}</span>
                     <RoleBadge
                       role={p.role}

@@ -7,9 +7,36 @@ import { AnimatePresence, motion } from 'motion/react'
 
 type Stage = 'splash' | 'video' | 'done'
 
+const INTRO_SEEN_KEY = 'introSeen'
+
+// 참여자/관리자 공유 링크(/m/..., /s/...)로 곧장 들어온 방문은 스플래시를 아예
+// 생략한다 — 링크를 받은 사람은 이미 '딱'을 아는 사람이라 인트로가 방해만 된다.
+// 같은 세션(탭)에서 스플래시를 이미 본 경우도 재진입 시 건너뛴다.
+function shouldSkipSplash(): boolean {
+  const path = window.location.pathname
+  if (path.startsWith('/m/') || path.startsWith('/s/')) return true
+  try {
+    return sessionStorage.getItem(INTRO_SEEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function markIntroSeen() {
+  try {
+    sessionStorage.setItem(INTRO_SEEN_KEY, '1')
+  } catch {
+    // sessionStorage 차단(시크릿 모드 등) — 이번 세션에서만 스플래시가 다시 뜨는 정도로 그친다
+  }
+}
+
 export function SplashScreen({ children }: { children: React.ReactNode }) {
-  const [stage, setStage] = useState<Stage>('splash')
+  const [stage, setStage] = useState<Stage>(() => (shouldSkipSplash() ? 'done' : 'splash'))
   const videoRef = useRef<HTMLVideoElement>(null)
+
+  useEffect(() => {
+    if (stage === 'done') markIntroSeen()
+  }, [stage])
 
   useEffect(() => {
     if (stage !== 'video') return

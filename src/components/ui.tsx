@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react'
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
-import { motion, useAnimationControls, type HTMLMotionProps } from 'motion/react'
+import { motion, MotionConfig, useAnimationControls, type HTMLMotionProps } from 'motion/react'
 import { press, pressSpring, spring, screenIn } from '../lib/motion'
 
 // ---------- 공통 클래스 ----------
@@ -37,20 +37,21 @@ interface ButtonProps extends HTMLMotionProps<'button'> {
 export function Button({ variant = 'primary', className = '', breathe = false, ...rest }: ButtonProps) {
   const controls = useAnimationControls()
 
-  // whileTap과 별개의 컨트롤로 다뤄서, 누르는 스프링(pressSpring)과 숨쉬기 루프의
-  // transition이 서로 덮어쓰지 않게 한다. breathe가 꺼지면 즉시 원래 크기로 멈춘다.
+  // whileTap과 별개의 컨트롤로 다뤄서, 누르는 스프링(pressSpring)과 팝 애니메이션의
+  // transition이 서로 덮어쓰지 않게 한다. 버튼이 활성화될 때(breathe: false→true) 딱
+  // 한 번만 팝하고 멈춘다 — 계속 반복되면 오히려 산만해서 1회성으로 둔다.
   useEffect(() => {
     if (breathe) {
       void controls.start({
-        scale: [1, 0.98, 1],
-        transition: { duration: 1, repeat: Infinity, ease: 'easeInOut' },
+        scale: [1, 1.05, 1],
+        transition: { duration: 0.45, ease: 'easeInOut' },
       })
     } else {
       void controls.start({ scale: 1, transition: { duration: 0.2 } })
     }
   }, [breathe, controls])
 
-  return (
+  const button = (
     <motion.button
       type="button"
       animate={controls}
@@ -60,6 +61,10 @@ export function Button({ variant = 'primary', className = '', breathe = false, .
       {...rest}
     />
   )
+
+  // 팝은 기능적 힌트 모션이라, 앱 전역 reducedMotion="user"와 무관하게 항상 재생되도록
+  // 예외 처리한다 — AvailabilityGrid/Slot의 힌트 모션과 같은 이유.
+  return breathe ? <MotionConfig reducedMotion="never">{button}</MotionConfig> : button
 }
 
 /** 화면(단계) 진입 래퍼 — y 16px + 페이드. delay로 헤드라인→본문 순차 진입 */

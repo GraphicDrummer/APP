@@ -23,10 +23,12 @@ import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { AnimatePresence, motion } from 'motion/react'
 import { press, pressSpring, riseIn, spring } from '../lib/motion'
+import { withCharacterIcons } from '../lib/characters'
 import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '../components/ui'
 import { AvailabilityGrid, type CascadeSignal } from '../components/AvailabilityGrid'
 import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { PersonTabs } from '../components/PersonTabs'
+import { CharacterAvatarStack } from '../components/CharacterIcon'
 import { RecommendationCard } from '../components/RecommendationCard'
 
 // 기본값(빈 칸) = 불가. 눌러서 되는 시간만 칠한다: 불가(기본) → 가능 → 애매 → 불가.
@@ -265,7 +267,21 @@ export function MeetingPage() {
   )
 
   // 아직 시간표를 제출하지 않은 참여자 — 놀리는 톤의 대기 안내에 쓴다
-  const pendingNames = useMemo(() => rows.filter((r) => !r.submitted_at).map((r) => r.name), [rows])
+  const pendingRows = useMemo(() => rows.filter((r) => !r.submitted_at), [rows])
+  const pendingNames = useMemo(() => pendingRows.map((r) => r.name), [pendingRows])
+
+  // PersonTabs 표시용 — rows(캐릭터/제출 여부)와 people(그리드 상태)을 같은 인덱스로 합친다.
+  // 둘 다 load()에서 같은 parts 배열로 만들어지고, 이후 갱신도 항상 같은 인덱스로 짝을
+  // 맞춰 갱신하므로(toggleRole, save 등) 정렬이 어긋나지 않는다.
+  const personTabsData = useMemo(
+    () =>
+      people.map((p, i) => ({
+        ...p,
+        character: rows[i]?.character,
+        submitted: !!rows[i]?.submitted_at,
+      })),
+    [people, rows],
+  )
 
   // "지금까지 입력 기준 유력해요" 힌트 — recommend() 결과를 그대로 재사용, 별도 계산 없음.
   // 아직 다 안 걷힌(pendingNames 있음) + 미확정 상태에서만 보여준다.
@@ -495,7 +511,15 @@ export function MeetingPage() {
     }
     return (
       <div className="min-h-screen bg-app text-ink">
-        <div className="max-w-[430px] mx-auto">
+        {/* 확정 완결 화면 전용 일러스트 — 컨페티(캔버스, 화면 최상단 레이어) 아래,
+            본문 콘텐츠보다는 뒤(z-0)에 깔려 화면 하단에 고정된다 */}
+        <img
+          src="/final_image.png"
+          alt=""
+          aria-hidden
+          className="fixed inset-x-0 bottom-0 z-0 w-full object-contain object-bottom pointer-events-none select-none"
+        />
+        <div className="relative z-10 max-w-[430px] mx-auto">
           <StepTabs
             current={2}
             clickable={[false, true, false]}
@@ -503,7 +527,7 @@ export function MeetingPage() {
             onBack={() => setView('adjust')}
           />
         </div>
-        <div className="max-w-[430px] mx-auto px-[22px] pt-8 pb-4 text-center">
+        <div className="relative z-10 max-w-[430px] mx-auto px-[22px] pt-8 pb-4 text-center">
           <Enter>
             <div
               data-testid="confirmed-card"
@@ -521,7 +545,7 @@ export function MeetingPage() {
                 <p className="text-[11px] font-black tracking-[2.2px] uppercase text-white/70">
                   MEETING CONFIRMED
                 </p>
-                <p className="text-[15px] font-bold text-white/90 mt-1">{meeting.title}</p>
+                <p className="text-[15px] font-bold text-white/90 mt-1">{withCharacterIcons(meeting.title)}</p>
               </div>
               <p
                 data-testid="confirmed-time"
@@ -635,7 +659,7 @@ export function MeetingPage() {
         <Enter>
           <header className="mb-4 px-0.5">
             <h1 data-testid="meeting-title" className="text-[22.5px] font-black tracking-[-1.1px]">
-              {meeting?.title}
+              {withCharacterIcons(meeting?.title ?? '')}
             </h1>
             <p className="text-[11.5px] text-ink-muted mt-1">
               {range?.start} ~ {range?.end} ·{' '}
@@ -820,19 +844,22 @@ export function MeetingPage() {
           )}
 
           <div className="mt-6 mb-2.5 space-y-1.5">
-            {pendingNames.length > 0 && (
-              <p className="text-[12.5px] font-bold text-soft-ink bg-soft-bg/60 rounded-field px-3 py-2">
-                {pendingNames.length === 1
-                  ? `모두가 ${pendingNames[0]}님만 기다리고 있어요!`
-                  : `아직 ${pendingNames.length}명이 고민 중이에요 🐭`}
-              </p>
+            {pendingRows.length > 0 && (
+              <div className="flex items-center gap-2 bg-soft-bg/60 rounded-field px-3 py-2">
+                <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={22} />
+                <p className="text-[12.5px] font-bold text-soft-ink">
+                  {pendingRows.length === 1
+                    ? `모두가 ${pendingRows[0].name}님만 기다리고 있어요!`
+                    : `아직 ${pendingRows.length}명이 고민 중이에요`}
+                </p>
+              </div>
             )}
             <p className="font-galmuri11 text-[13px] font-bold text-ink-muted px-0.5">
-              내 이름을 누르고, 되는 시간을 칠해주세요. 애매하면 노랑으로!
+              내 이름을 누르고, 되는 시간을 칠해주세요. 애매하면 주황으로!
             </p>
           </div>
           <PersonTabs
-            people={people}
+            people={personTabsData}
             selected={selected}
             onSelect={(i) => {
               setSelected(i)
@@ -870,18 +897,21 @@ export function MeetingPage() {
                   >
                     {people[selected].id}님의 시간을 저장했어요!
                   </motion.p>
-                  <motion.p
+                  <motion.div
                     initial={riseIn.initial}
                     animate={riseIn.animate}
                     transition={{ ...spring, delay: 0.25 }}
-                    className="text-[12.5px] font-bold text-ink-muted mt-1.5"
+                    className="flex items-center justify-center gap-2 mt-1.5"
                   >
-                    {pendingNames.length > 0
-                      ? pendingNames.length === 1
-                        ? `${pendingNames[0]}님 입력만 기다리면 돼요!`
-                        : `아직 ${pendingNames.length}명이 고민 중이에요 🐭`
-                      : '모두 입력을 마쳤어요! 위에서 추천 시간을 확인해보세요.'}
-                  </motion.p>
+                    {pendingRows.length > 0 && <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={20} />}
+                    <span className="text-[12.5px] font-bold text-ink-muted">
+                      {pendingRows.length > 0
+                        ? pendingRows.length === 1
+                          ? `${pendingRows[0].name}님 입력만 기다리면 돼요!`
+                          : `아직 ${pendingRows.length}명이 고민 중이에요`
+                        : '모두 입력을 마쳤어요! 위에서 추천 시간을 확인해보세요.'}
+                    </span>
+                  </motion.div>
                   <motion.button
                     type="button"
                     data-testid="back-to-grid"

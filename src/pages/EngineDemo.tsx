@@ -110,7 +110,7 @@ export function EngineDemo() {
             딱<span className="text-blue-600">.</span> 추천 엔진
           </h1>
           <p className="text-[13px] text-neutral-500">
-            되는 시간을 칠해주세요. 애매하면 노랑으로! 추천이 실시간으로 다시 계산돼요.
+            되는 시간을 칠해주세요. 애매하면 주황으로! 추천이 실시간으로 다시 계산돼요.
           </p>
         </header>
 
