@@ -549,7 +549,7 @@ export function CreateMeetingPage() {
             {/* 딱 맞는 시간을 찾을게요. — 버튼을 눌러야 실제 값으로 반영(플레이스홀더 유지) */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
-                {durationTouched ? `${durationSlots}시간` : '딱 맞는 시간'}
+                {durationTouched ? `${durationSlots}시간` : '딱! 맞는 시간'}
               </Slot>
               <span>을 찾을게요.</span>
               <AnimatePresence initial={false}>
