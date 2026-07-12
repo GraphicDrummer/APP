@@ -168,7 +168,7 @@ export function CreateMeetingPage() {
     setActiveSlot((cur) => (cur === k ? null : k))
   }
   // 시간대·소요시간은 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해
-  // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"비는 시간")로 보여준다.
+  // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"딱 맞는 시간")로 보여준다.
   const [hoursTouched, setHoursTouched] = useState(false)
   const [durationTouched, setDurationTouched] = useState(false)
   // 마감 줄("답변은 …까지.")을 보여줄지 — "마감 없음"이면 줄이 접히고 "+ 마감 기한 있음"으로 대체
@@ -468,9 +468,9 @@ export function CreateMeetingPage() {
             {/* 새로운 회의, */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')} hintIndex={0} hintActive={hintActive}>
-                {title.trim() || '새로운'}
+                {title.trim() || '새로운 회의'}
               </Slot>
-              <span>회의,</span>
+              <span>,</span>
               <AnimatePresence initial={false}>
                 {activeSlot === 'title' && (
                   <EditorPanel key="ed-title">
@@ -479,7 +479,7 @@ export function CreateMeetingPage() {
                       autoFocus
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="예: 야채 정기 회의"
+                      placeholder="예: 산중컴퍼니 월간 회의"
                     />
                   </EditorPanel>
                 )}
@@ -546,10 +546,10 @@ export function CreateMeetingPage() {
               </AnimatePresence>
             </div>
 
-            {/* 비는 시간을 찾을게요. — 버튼을 눌러야 실제 값으로 반영(플레이스홀더 유지) */}
+            {/* 딱 맞는 시간을 찾을게요. — 버튼을 눌러야 실제 값으로 반영(플레이스홀더 유지) */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
-                {durationTouched ? `${durationSlots}시간` : '비는 시간'}
+                {durationTouched ? `${durationSlots}시간` : '딱 맞는 시간'}
               </Slot>
               <span>을 찾을게요.</span>
               <AnimatePresence initial={false}>
@@ -680,7 +680,7 @@ export function CreateMeetingPage() {
                 value={organizer}
                 onFocus={() => setHintActive(false)}
                 onChange={(e) => setOrganizer(e.target.value)}
-                placeholder="예: 감자"
+                placeholder="예: 호랑이 팀장님"
               />
             </Field>
 
@@ -761,7 +761,7 @@ export function CreateMeetingPage() {
                     autoFocus
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="예: 강남역 3번 출구"
+                    placeholder="예: 3층 세미나실"
                   />
                 </motion.div>
               )}

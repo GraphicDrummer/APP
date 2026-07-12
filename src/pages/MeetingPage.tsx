@@ -690,7 +690,7 @@ export function MeetingPage() {
                       data-testid="edit-location"
                       value={editLocation}
                       onChange={(e) => setEditLocation(e.target.value)}
-                      placeholder="예: 강남역 3번 출구"
+                      placeholder="예: 3층 세미나실"
                     />
                   </Field>
                   <div className="flex gap-3">
