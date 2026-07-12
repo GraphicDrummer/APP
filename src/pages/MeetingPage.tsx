@@ -297,7 +297,7 @@ export function MeetingPage() {
   const cycleDay = (d: number) => {
     dismissGridHint()
     setCascade({ kind: 'day', line: d, nonce: Date.now() })
-    window.setTimeout(() => setCascade(null), hours.length * 25 + 450)
+    window.setTimeout(() => setCascade(null), hours.length * 40 + 450)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -318,7 +318,7 @@ export function MeetingPage() {
   const cycleHour = (h: number) => {
     dismissGridHint()
     setCascade({ kind: 'hour', line: h, nonce: Date.now() })
-    window.setTimeout(() => setCascade(null), 5 * 25 + 450)
+    window.setTimeout(() => setCascade(null), 5 * 40 + 450)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -627,6 +627,8 @@ export function MeetingPage() {
           clickable={[false, false, !!meeting?.confirmed_slot]}
           onStepClick={() => setView('done')}
           onBack={showSavedPanel ? () => setShowSavedPanel(false) : () => navigate('/')}
+          onForward={() => setView('done')}
+          forwardDisabled={!meeting?.confirmed_slot}
         />
       </div>
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">

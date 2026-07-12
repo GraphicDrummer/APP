@@ -50,7 +50,7 @@ export function EngineDemo() {
   // 요일 헤더 클릭 — 그 요일 전체 칸을 한 번에 순환. MeetingPage.tsx와 동일한 규칙.
   const cycleDay = (d: number) => {
     setCascade({ kind: 'day', line: d, nonce: Date.now() })
-    window.setTimeout(() => setCascade(null), HOURS.length * 25 + 450)
+    window.setTimeout(() => setCascade(null), HOURS.length * 40 + 450)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p
@@ -71,7 +71,7 @@ export function EngineDemo() {
   // 시간 헤더 클릭 — 그 시간 전체 칸(모든 요일)을 한 번에 순환. cycleDay와 같은 규칙.
   const cycleHour = (h: number) => {
     setCascade({ kind: 'hour', line: h, nonce: Date.now() })
-    window.setTimeout(() => setCascade(null), DAYS.length * 25 + 450)
+    window.setTimeout(() => setCascade(null), DAYS.length * 40 + 450)
     setPeople((prev) =>
       prev.map((p, i) => {
         if (i !== selected) return p

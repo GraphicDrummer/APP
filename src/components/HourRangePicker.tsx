@@ -60,7 +60,7 @@ export function ChipRow({
         ref={scroller}
         data-testid={testId}
         style={{ paddingLeft: `calc(50% - ${CHIP_WIDTH / 2}px)`, paddingRight: `calc(50% - ${CHIP_WIDTH / 2}px)` }}
-        className="flex flex-1 gap-1.5 overflow-x-auto py-0.5 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex flex-1 min-w-0 gap-1.5 overflow-x-auto py-0.5 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {options.map((h) => {
           const disabled = isDisabled?.(h) ?? false

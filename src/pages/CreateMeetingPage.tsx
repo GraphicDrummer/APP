@@ -5,7 +5,7 @@ import { addParticipant, createMeeting, type Role } from '../lib/db'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
-import { Button, Enter, Field, LabeledRow, RoleBadge, Select, TextInput, cardCls } from '../components/ui'
+import { Button, Enter, Field, LabeledRow, RoleBadge, TextInput, cardCls } from '../components/ui'
 import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { hhmm } from '../lib/slots'
 
@@ -165,10 +165,10 @@ export function CreateMeetingPage() {
     setHintActive(false)
     setActiveSlot((cur) => (cur === k ? null : k))
   }
-  // 시간대·소요시간은 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해
-  // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"비는 시간")로 보여준다.
+  // 시간대는 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해 빈 상태에선
+  // 자연어 플레이스홀더("이 시간대")로 보여준다. 소요시간은 버튼형이라 기본값
+  // 1시간이 처음부터 선택된 채로 바로 보여 별도 touched 추적이 필요 없다.
   const [hoursTouched, setHoursTouched] = useState(false)
-  const [durationTouched, setDurationTouched] = useState(false)
   // 마감 줄("답변은 …까지.")을 보여줄지 — "마감 없음"이면 줄이 접히고 "+ 마감 기한 있음"으로 대체
   const [deadlineShown, setDeadlineShown] = useState(true)
 
@@ -246,6 +246,24 @@ export function CreateMeetingPage() {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  // 참여 링크 공유 — 관리자 링크와 동일한 방식(모바일 공유 시트/데스크톱 복사 폴백)
+  const shareLink = async () => {
+    if (!link) return
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `딱. — ${title}`,
+          text: `[딱.] "${title}" 모임에 초대해요! 되는 시간을 칠해주세요.`,
+          url: link,
+        })
+      } catch {
+        // 사용자가 공유 시트를 닫음 — 조용히 무시
+      }
+      return
+    }
+    await copyLink()
+  }
+
   const copyAdminLink = async () => {
     if (!adminLink) return
     await navigator.clipboard.writeText(adminLink)
@@ -280,7 +298,7 @@ export function CreateMeetingPage() {
     return (
       <div className="min-h-screen bg-app text-ink">
         <div className="max-w-[430px] mx-auto">
-          <StepTabs current={0} />
+          <StepTabs current={0} onForward={() => void navigate(path)} />
         </div>
         <div className="max-w-[430px] mx-auto px-[22px] pt-6 pb-4">
           <Enter className="text-center">
@@ -308,8 +326,26 @@ export function CreateMeetingPage() {
                 {shortLink}
               </p>
             </div>
-            <Button onClick={() => void copyLink()} className="w-full mt-4 !py-2.5 !text-[13px] !rounded-full">
-              {copied ? '복사됐어요!' : '링크 복사하기'}
+
+            <motion.button
+              type="button"
+              data-testid="share-link-kakao"
+              onClick={() => void shareLink()}
+              whileTap={press}
+              transition={pressSpring}
+              className="w-full mt-4 rounded-field bg-[#FEE500] text-[#191919] py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <KakaoIcon />
+              카카오톡으로 공유하기
+            </motion.button>
+
+            <Button
+              variant="ghost"
+              onClick={() => void copyLink()}
+              className="w-full mt-2 !py-2.5 !text-[13px] flex items-center justify-center gap-2"
+            >
+              <CopyIcon stroke="#1a2028" />
+              {copied ? '복사됐어요!' : '링크 복사'}
             </Button>
           </Enter>
 
@@ -508,29 +544,38 @@ export function CreateMeetingPage() {
               </AnimatePresence>
             </div>
 
-            {/* 비는 시간을 찾을게요. */}
+            {/* 비는 시간을 찾을게요. — 기본값 1시간이 처음부터 선택돼 있어 열지 않아도 됨 */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
-              <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
-                {durationTouched ? `${durationSlots}시간` : '비는 시간'}
+              <Slot testId="slot-duration" filled active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
+                {durationSlots}시간
               </Slot>
               <span>을 찾을게요.</span>
               <AnimatePresence initial={false}>
                 {activeSlot === 'duration' && (
                   <EditorPanel key="ed-duration">
-                    <Field label="소요 시간">
-                      <Select
-                        data-testid="duration"
-                        value={durationSlots}
-                        onChange={(e) => {
-                          setDurationSlots(Number(e.target.value))
-                          setDurationTouched(true)
-                        }}
-                      >
-                        <option value={1}>1시간</option>
-                        <option value={2}>2시간</option>
-                        <option value={3}>3시간</option>
-                      </Select>
-                    </Field>
+                    <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
+                      소요 시간
+                    </span>
+                    <div className="flex gap-1.5">
+                      {[1, 2, 3, 4].map((n) => (
+                        <motion.button
+                          key={n}
+                          type="button"
+                          data-testid={`duration-${n}`}
+                          aria-pressed={n === durationSlots}
+                          onClick={() => setDurationSlots(n)}
+                          whileTap={press}
+                          transition={pressSpring}
+                          className={`flex-1 rounded-full py-1.5 text-[12px] font-bold text-center cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${
+                            n === durationSlots
+                              ? 'bg-primary text-white'
+                              : 'bg-white border border-line text-ink-muted'
+                          }`}
+                        >
+                          {n}시간
+                        </motion.button>
+                      ))}
+                    </div>
                   </EditorPanel>
                 )}
               </AnimatePresence>

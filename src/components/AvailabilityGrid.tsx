@@ -17,8 +17,9 @@ export interface CascadeSignal {
   nonce: number
 }
 
-// 칸당 스태거 간격(초) — 요구 사양 20~30ms 사이
-const CASCADE_STEP = 0.025
+// 칸당 스태거 간격(초) — 헤더 일괄 변경 시 파도처럼 번지는 느낌을 위해
+// 기존 25ms에서 강화. 너무 크면 마지막 칸까지 번지는 데 오래 걸려 40ms로 조정.
+const CASCADE_STEP = 0.04
 
 interface Props {
   person: Person
@@ -63,8 +64,8 @@ function Cell({
   useEffect(() => {
     if (!affected) return
     void controls.start({
-      scale: [1, 1.14, 1],
-      transition: { delay, duration: 0.34, times: [0, 0.45, 1], ease: 'easeInOut' },
+      scale: [1, 1.22, 1],
+      transition: { delay, duration: 0.42, times: [0, 0.4, 1], ease: 'easeInOut' },
     })
     // nonce가 바뀔 때마다(같은 줄 반복 클릭 포함) 펄스를 다시 재생
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,8 +125,9 @@ function HeaderCell({
     if (!hint) return
     const t = window.setTimeout(() => {
       void controls.start({
-        filter: ['brightness(1)', 'brightness(1.35)', 'brightness(1)'],
-        transition: { duration: 0.55, ease: 'easeInOut' },
+        filter: ['brightness(1)', 'brightness(1.5)', 'brightness(1)'],
+        scale: [1, 1.06, 1],
+        transition: { duration: 0.6, ease: 'easeInOut' },
       })
     }, 550)
     return () => window.clearTimeout(t)
