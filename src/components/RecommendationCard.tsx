@@ -168,7 +168,7 @@ export function RecommendationCard({
             <p className="text-[13px] font-bold text-ink-muted mt-3.5 leading-[1.6]">
               누군가의 한 걸음 양보가 시급합니다.
               <br />
-              <span className="text-ink">차선책을 확인해 보세요:</span>
+              <span className="text-ink">차선책을 확인해 보세요!</span>
             </p>
             <div className="mt-4 flex flex-col gap-2.5">
               {options.map(({ label, w, cost }, i) => (
