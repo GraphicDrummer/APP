@@ -60,7 +60,7 @@ export function ChipRow({
         ref={scroller}
         data-testid={testId}
         style={{ paddingLeft: `calc(50% - ${CHIP_WIDTH / 2}px)`, paddingRight: `calc(50% - ${CHIP_WIDTH / 2}px)` }}
-        className="flex flex-1 min-w-0 gap-1.5 overflow-x-auto py-0.5 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex flex-1 min-w-0 gap-1.5 overflow-x-scroll overflow-y-hidden py-0.5 snap-x snap-mandatory touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {options.map((h) => {
           const disabled = isDisabled?.(h) ?? false
@@ -75,12 +75,12 @@ export function ChipRow({
               whileTap={disabled ? undefined : press}
               transition={pressSpring}
               style={{ width: CHIP_WIDTH }}
-              className={`flex-none snap-center rounded-full py-1.5 text-[12px] font-bold text-center transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
+              className={`flex-none snap-center border-2 border-line rounded-full py-1.5 text-[12px] font-bold text-center transition-[background-color,color,opacity] duration-[120ms] motion-reduce:transition-none ${
                 disabled
-                  ? 'opacity-30 cursor-not-allowed bg-white border border-line text-ink-muted'
+                  ? 'opacity-30 cursor-not-allowed bg-white text-ink-muted'
                   : h === value
                     ? 'bg-primary text-white cursor-pointer'
-                    : 'bg-white border border-line text-ink-muted cursor-pointer'
+                    : 'bg-white text-ink-muted cursor-pointer'
               }`}
             >
               {hhmm(h)}

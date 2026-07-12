@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useAnimationControls } from 'motion/react'
+import { motion, MotionConfig, useAnimationControls } from 'motion/react'
 import { DAYS, HOURS, key, type CellState, type Person } from '../engine'
 import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
@@ -85,19 +85,26 @@ function Cell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hint])
 
+  const button = (
+    <motion.button
+      type="button"
+      data-testid={`cell-${d}-${h}`}
+      aria-label={`${DAYS[d]} ${hhmm(h)} ${STATE_LABEL[state]}`}
+      onClick={() => onCycle(d, h)}
+      animate={controls}
+      whileTap={press}
+      transition={pressSpring}
+      style={{ transitionDelay: `${Math.round(delay * 1000)}ms` }}
+      className={`block w-full h-[41px] rounded-[17px] border-2 border-line cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[state]}`}
+    />
+  )
+
   return (
     <td>
-      <motion.button
-        type="button"
-        data-testid={`cell-${d}-${h}`}
-        aria-label={`${DAYS[d]} ${hhmm(h)} ${STATE_LABEL[state]}`}
-        onClick={() => onCycle(d, h)}
-        animate={controls}
-        whileTap={press}
-        transition={pressSpring}
-        style={{ transitionDelay: `${Math.round(delay * 1000)}ms` }}
-        className={`block w-full h-[41px] rounded-[17px] border-2 cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[state]}`}
-      />
+      {/* 힌트 칸만 앱 전역 reducedMotion="user" 설정과 무관하게 들썩임이 항상 재생되게
+          예외 처리한다 — 입력 유도라는 기능적 목적이 있는 모션이라 다른 장식성
+          모션과 다르게 취급한다. */}
+      {hint ? <MotionConfig reducedMotion="never">{button}</MotionConfig> : button}
     </td>
   )
 }
@@ -134,7 +141,7 @@ function HeaderCell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hint])
 
-  return (
+  const button = (
     <motion.button
       type="button"
       data-testid={testId}
@@ -148,14 +155,18 @@ function HeaderCell({
       {children}
     </motion.button>
   )
+
+  // 힌트 헤더만 reducedMotion 설정과 무관하게 재생 — Cell의 힌트와 같은 이유
+  return hint ? <MotionConfig reducedMotion="never">{button}</MotionConfig> : button
 }
 
 // 칸은 상태와 무관하게 크기 완전 고정 — 텍스트 없이 색으로만 구분한다.
 // 기본값(빈 칸) = 불가. 되는 시간만 명시적으로 "칠해서" 표시한다.
+// 테두리는 상태와 무관하게 항상 진한 픽셀 테두리(border-line) — 채움 색만 상태별로 다르다.
 const CELL_STYLE: Record<DisplayState, string> = {
-  available: 'bg-primary border-primary',
-  soft: 'bg-soft-bg border-soft',
-  blocked: 'bg-surface-sub border-line',
+  available: 'bg-primary',
+  soft: 'bg-soft',
+  blocked: 'bg-transparent',
 }
 
 const STATE_LABEL: Record<DisplayState, string> = { available: '가능', soft: '애매', blocked: '불가' }
@@ -318,9 +329,9 @@ export function AvailabilityGrid({
 /** 색 범례 — 가능/애매/불가. 그리드 상단(참여자 이름 옆)에 붙여 쓴다 */
 export function GridLegend() {
   const items: { label: string; cls: string }[] = [
-    { label: '가능', cls: 'bg-primary border border-primary' },
-    { label: '애매', cls: 'bg-soft-bg border border-soft' },
-    { label: '불가', cls: 'bg-surface-sub border border-line' },
+    { label: '가능', cls: 'bg-primary border border-line' },
+    { label: '애매', cls: 'bg-soft border border-line' },
+    { label: '불가', cls: 'bg-transparent border border-line' },
   ]
   return (
     <div className="flex items-center gap-2.5">

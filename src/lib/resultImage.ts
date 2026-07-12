@@ -16,12 +16,12 @@ export function downloadResultPng({ title, organizer, timeText }: ResultImageInp
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
-  // 배경 + 카드 테두리
-  ctx.fillStyle = '#f5f5f5'
+  // 배경 + 카드 테두리 — 픽셀 팔레트(진한 잉크 테두리 + 포인트 파랑)
+  ctx.fillStyle = '#e9e9e9'
   ctx.fillRect(0, 0, W, H)
   ctx.fillStyle = '#ffffff'
-  ctx.strokeStyle = '#2563eb'
-  ctx.lineWidth = 3
+  ctx.strokeStyle = '#303030'
+  ctx.lineWidth = 4
   ctx.beginPath()
   ctx.roundRect(24, 24, W - 48, H - 48, 24)
   ctx.fill()
@@ -32,7 +32,7 @@ export function downloadResultPng({ title, organizer, timeText }: ResultImageInp
   ctx.textAlign = 'center'
 
   // 체크 배지
-  ctx.fillStyle = '#16a34a'
+  ctx.fillStyle = '#1a82ff'
   ctx.beginPath()
   ctx.arc(W / 2, 110, 34, 0, Math.PI * 2)
   ctx.fill()
@@ -44,19 +44,19 @@ export function downloadResultPng({ title, organizer, timeText }: ResultImageInp
   ctx.lineTo(W / 2 + 17, 97)
   ctx.stroke()
 
-  ctx.fillStyle = '#737373'
+  ctx.fillStyle = '#6f6f6f'
   ctx.font = font(20, 600)
   ctx.fillText(`${organizer} 님의 모임`, W / 2, 180)
 
-  ctx.fillStyle = '#171717'
+  ctx.fillStyle = '#303030'
   ctx.font = font(34, 800)
   ctx.fillText(title, W / 2, 222)
 
-  ctx.fillStyle = '#2563eb'
+  ctx.fillStyle = '#1a82ff'
   ctx.font = font(46, 800)
   ctx.fillText(timeText, W / 2, 290)
 
-  ctx.fillStyle = '#a3a3a3'
+  ctx.fillStyle = '#8a8a8a'
   ctx.font = font(17, 600)
   ctx.fillText('딱 — 모두의 시간을 모으지 않아요. 딱 하나를 골라드려요.', W / 2, 348)
 

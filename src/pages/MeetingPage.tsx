@@ -87,7 +87,7 @@ function LinkIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
       <path
         d="M9.5 14.5 14.5 9.5M10.5 6.5l1-1a4 4 0 0 1 5.657 5.657l-1.5 1.5M13.5 17.5l-1 1A4 4 0 0 1 6.843 12.843l1.5-1.5"
-        stroke="#1a2028"
+        stroke="#303030"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -99,9 +99,9 @@ function LinkIcon() {
 function ImageIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="#1a2028" strokeWidth="1.8" />
-      <circle cx="8.5" cy="9.5" r="1.5" stroke="#1a2028" strokeWidth="1.8" />
-      <path d="m4.5 16 4.5-4.5 3 3 4-4 4.5 4.5" stroke="#1a2028" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="#303030" strokeWidth="1.8" />
+      <circle cx="8.5" cy="9.5" r="1.5" stroke="#303030" strokeWidth="1.8" />
+      <path d="m4.5 16 4.5-4.5 3 3 4-4 4.5 4.5" stroke="#303030" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -111,7 +111,7 @@ function RestartIcon() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
       <path
         d="M4 12a8 8 0 1 1 2.343 5.657M4 12V6m0 6h6"
-        stroke="#6b7684"
+        stroke="#6f6f6f"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -123,8 +123,8 @@ function RestartIcon() {
 function OtherCalendarIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
-      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="#6b7684" strokeWidth="1.8" />
-      <path d="M3.5 9.5h17" stroke="#6b7684" strokeWidth="1.8" />
+      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="#6f6f6f" strokeWidth="1.8" />
+      <path d="M3.5 9.5h17" stroke="#6f6f6f" strokeWidth="1.8" />
     </svg>
   )
 }
@@ -628,7 +628,7 @@ export function MeetingPage() {
           onStepClick={() => setView('done')}
           onBack={showSavedPanel ? () => setShowSavedPanel(false) : () => navigate('/')}
           onForward={() => setView('done')}
-          forwardDisabled={!meeting?.confirmed_slot}
+          forwardDisabled
         />
       </div>
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">

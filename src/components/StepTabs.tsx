@@ -68,7 +68,7 @@ export function StepTabs({
             animate={riseIn.animate}
             transition={spring}
             whileTap={press}
-            className="flex-none w-9 h-9 rounded-full bg-surface-sub/30 border border-line/50 text-ink-muted flex items-center justify-center cursor-pointer"
+            className="flex-none w-9 h-9 rounded-full bg-surface-sub/30 border-2 border-line text-ink-muted flex items-center justify-center cursor-pointer"
           >
             <BackArrowIcon />
           </motion.button>
@@ -82,7 +82,7 @@ export function StepTabs({
             const active = i === current
             const canClick = !!onStepClick && !!clickable[i] && !active
             const cls = `flex-1 py-2.5 rounded-[22px] text-[13px] font-black text-center ${
-              active ? 'bg-surface border border-line/50 shadow-pill text-ink' : 'text-ink-muted/60'
+              active ? 'bg-surface border-2 border-line shadow-pill text-ink' : 'text-ink-muted/60'
             }`
             return canClick ? (
               <motion.button
@@ -116,7 +116,7 @@ export function StepTabs({
             animate={riseIn.animate}
             transition={spring}
             whileTap={forwardDisabled ? undefined : press}
-            className={`flex-none w-9 h-9 rounded-full bg-surface-sub/30 border border-line/50 flex items-center justify-center ${
+            className={`flex-none w-9 h-9 rounded-full bg-surface-sub/30 border-2 border-line flex items-center justify-center ${
               forwardDisabled ? 'text-ink-muted/30 cursor-not-allowed' : 'text-ink-muted cursor-pointer'
             }`}
           >

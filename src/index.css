@@ -1,32 +1,36 @@
 @import "tailwindcss";
 
-/* 디자인 토큰 — Figma(APP_DESIGN) 기준. Tailwind v4 @theme으로 유틸리티까지 생성된다.
+/* 디자인 토큰 — 픽셀 감성. Tailwind v4 @theme으로 유틸리티까지 생성된다.
    예: bg-app, text-ink, border-line, bg-primary, rounded-field, shadow-card */
 @theme {
   --font-sans:
     "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  /* 표시용 메인 폰트 — 픽셀 폰트 우선, 실패 시 Pretendard로 자연스럽게 폴백 */
+  --font-main: "DungGeunMo", "Pretendard Variable", Pretendard, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
 
   /* 배경/표면 */
-  --color-app: #f5f6f8; /* 앱 배경 (연한 회색) */
-  --color-surface: #ffffff; /* 카드/입력창 */
-  --color-surface-sub: #f0f2f5; /* 보조 표면 (선택 배지, 비활성 배경) */
+  --color-app: #e9e9e9; /* 앱 배경 */
+  --color-surface: #ffffff; /* 카드/입력창 — 흰 배경 + 진한 테두리로 대비 */
+  --color-surface-sub: #d4d4d4; /* 보조 표면 (선택 배지, 비활성 배경) */
 
-  /* 텍스트/선 */
-  --color-ink: #1a2028; /* 본문 진한 잉크 */
-  --color-ink-muted: #6b7684; /* 보조 텍스트 */
-  --color-line: #e5e8ec; /* 테두리 */
+  /* 텍스트/선 — 픽셀 팔레트는 테두리와 텍스트가 같은 진한 회색 하나를 공유한다 */
+  --color-ink: #303030; /* 본문 텍스트 */
+  --color-ink-muted: #6f6f6f; /* 보조 텍스트 */
+  --color-line: #303030; /* 테두리 — 카드/버튼/그리드 칸/입력창 전부 이 색 */
 
   /* 브랜드/상태 */
-  --color-primary: #3182f6; /* 메인 파랑 */
-  --color-confirm: #27b25b; /* 확정 초록 */
-  --color-soft: #ffd230; /* 애매 — 노랑 (테두리/강조) */
-  --color-soft-bg: #fff4dc; /* 애매 — 칸 채움 */
-  --color-soft-ink: #bb4d00; /* 애매 — 텍스트 */
-  --color-blocked: #1a2028; /* 불가 — 어두운 남색 */
+  --color-primary: #1a82ff; /* 포인트 파랑 — 인터랙티브, 밑줄, 빈 상태 슬롯, 가능(그리드) */
+  --color-accent: #ff9100; /* 포인트 주황 — 채워진 값, 마감, 확정 텍스트 강조 */
+  --color-confirm: #1a82ff; /* 확정 배경 */
+  --color-soft: #ffabd1; /* 애매 — 분홍 (테두리/그리드 칸 채움) */
+  --color-soft-bg: #ffe3f0; /* 애매 — 옅은 분홍(배지/배너 등 은은한 배경용) */
+  --color-soft-ink: #303030; /* 애매 배경 위 텍스트 */
+  --color-blocked: transparent; /* 불가 — 채움 없이 테두리만 */
   --color-danger: #e5484d; /* 실패/에러 빨강 */
 
-  /* 모양 */
+  /* 모양 — 라운드는 기존 유지, 테두리로 픽셀 느낌을 낸다 */
   --radius-field: 15px; /* 입력창/버튼/칩 공통 라운드 */
   --radius-card: 16px;
   --shadow-card: 0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
@@ -41,7 +45,7 @@ html {
 
 body {
   margin: 0;
-  font-family: var(--font-sans);
+  font-family: var(--font-main);
   background: var(--color-app);
   color: var(--color-ink);
 }

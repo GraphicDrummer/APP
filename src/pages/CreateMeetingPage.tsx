@@ -85,8 +85,8 @@ function Slot({
         active
           ? 'text-primary bg-primary/10 decoration-primary'
           : filled
-            ? 'text-primary decoration-primary/50'
-            : 'text-ink-muted/70 decoration-ink-muted/30'
+            ? 'text-accent decoration-accent'
+            : 'text-primary decoration-primary'
       }`}
     >
       {children}
@@ -94,7 +94,9 @@ function Slot({
   )
 }
 
-// 밑줄 영역 바로 아래에서 펼쳐지는 입력 패널 — flex-wrap 안에서 w-full이라 그 자리에서 줄바꿈되어 등장
+// 밑줄 영역 바로 아래에서 펼쳐지는 입력 패널 — flex-wrap 안에서 w-full이라 그 자리에서 줄바꿈되어 등장.
+// overflow-y만 hidden(높이 접힘 애니메이션용) — x는 visible로 둬서, 안에 있는 시간
+// 칩의 가로 스크롤이 조상의 overflow-hidden에 막히지 않게 한다.
 function EditorPanel({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
@@ -102,9 +104,9 @@ function EditorPanel({ children }: { children: React.ReactNode }) {
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
       transition={spring}
-      className="w-full overflow-hidden"
+      className="w-full overflow-x-visible overflow-y-hidden"
     >
-      <div className="mt-2 mb-1 rounded-card border border-line bg-surface shadow-card p-4">{children}</div>
+      <div className="mt-2 mb-1 rounded-card border-2 border-line bg-surface shadow-card p-4">{children}</div>
     </motion.div>
   )
 }
@@ -165,10 +167,10 @@ export function CreateMeetingPage() {
     setHintActive(false)
     setActiveSlot((cur) => (cur === k ? null : k))
   }
-  // 시간대는 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해 빈 상태에선
-  // 자연어 플레이스홀더("이 시간대")로 보여준다. 소요시간은 버튼형이라 기본값
-  // 1시간이 처음부터 선택된 채로 바로 보여 별도 touched 추적이 필요 없다.
+  // 시간대·소요시간은 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해
+  // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"비는 시간")로 보여준다.
   const [hoursTouched, setHoursTouched] = useState(false)
+  const [durationTouched, setDurationTouched] = useState(false)
   // 마감 줄("답변은 …까지.")을 보여줄지 — "마감 없음"이면 줄이 접히고 "+ 마감 기한 있음"으로 대체
   const [deadlineShown, setDeadlineShown] = useState(true)
 
@@ -344,7 +346,7 @@ export function CreateMeetingPage() {
               onClick={() => void copyLink()}
               className="w-full mt-2 !py-2.5 !text-[13px] flex items-center justify-center gap-2"
             >
-              <CopyIcon stroke="#1a2028" />
+              <CopyIcon stroke="#303030" />
               {copied ? '복사됐어요!' : '링크 복사'}
             </Button>
           </Enter>
@@ -385,7 +387,7 @@ export function CreateMeetingPage() {
               onClick={() => void copyAdminLink()}
               className="w-full mt-2 !py-2.5 !text-[13px] flex items-center justify-center gap-2"
             >
-              <CopyIcon stroke="#1a2028" />
+              <CopyIcon stroke="#303030" />
               {adminCopied ? '복사됐어요!' : '링크 복사'}
             </Button>
           </Enter>
@@ -544,10 +546,10 @@ export function CreateMeetingPage() {
               </AnimatePresence>
             </div>
 
-            {/* 비는 시간을 찾을게요. — 기본값 1시간이 처음부터 선택돼 있어 열지 않아도 됨 */}
+            {/* 비는 시간을 찾을게요. — 버튼을 눌러야 실제 값으로 반영(플레이스홀더 유지) */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
-              <Slot testId="slot-duration" filled active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
-                {durationSlots}시간
+              <Slot testId="slot-duration" filled={durationTouched} active={activeSlot === 'duration'} onToggle={() => toggleSlot('duration')} hintIndex={3} hintActive={hintActive}>
+                {durationTouched ? `${durationSlots}시간` : '비는 시간'}
               </Slot>
               <span>을 찾을게요.</span>
               <AnimatePresence initial={false}>
@@ -562,14 +564,17 @@ export function CreateMeetingPage() {
                           key={n}
                           type="button"
                           data-testid={`duration-${n}`}
-                          aria-pressed={n === durationSlots}
-                          onClick={() => setDurationSlots(n)}
+                          aria-pressed={durationTouched && n === durationSlots}
+                          onClick={() => {
+                            setDurationSlots(n)
+                            setDurationTouched(true)
+                          }}
                           whileTap={press}
                           transition={pressSpring}
-                          className={`flex-1 rounded-full py-1.5 text-[12px] font-bold text-center cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${
-                            n === durationSlots
+                          className={`flex-1 border-2 border-line rounded-full py-1.5 text-[12px] font-bold text-center cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${
+                            durationTouched && n === durationSlots
                               ? 'bg-primary text-white'
-                              : 'bg-white border border-line text-ink-muted'
+                              : 'bg-white text-ink-muted'
                           }`}
                         >
                           {n}시간

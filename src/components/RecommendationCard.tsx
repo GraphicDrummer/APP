@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { DAYS, key, type RecommendResult, type WindowEval } from '../engine'
 import { hhmm } from '../lib/slots'
-import { characterIconPath } from '../lib/characters'
+import { characterIconPath, characterIconSrcSet } from '../lib/characters'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 
 interface Props {
@@ -60,7 +60,7 @@ function HeroCard({
     <div className={`rounded-field p-[22px] ${tone === 'primary' ? 'bg-primary' : 'bg-confirm'}`}>
       <p className="text-[11px] font-black tracking-[1.65px] uppercase text-white/70">{label}</p>
       <p className="text-[13px] font-bold text-white/75 mt-4">{day}</p>
-      <p data-testid="rec-slot" className="text-[45px] font-black tracking-[-2.2px] leading-none text-white mt-0.5">
+      <p data-testid="rec-slot" className="text-[58px] font-black tracking-[-2.2px] leading-none text-white mt-0.5">
         {time}
       </p>
       <div className="flex flex-wrap gap-2 mt-4">
@@ -155,7 +155,7 @@ export function RecommendationCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="bg-white border border-line rounded-field p-5"
+            className="bg-white border-2 border-line rounded-field p-5"
           >
             <div className="flex items-center gap-2">
               <span className="w-[27px] h-[27px] rounded-full bg-danger/10 text-danger text-[13px] font-black flex items-center justify-center">
@@ -193,12 +193,13 @@ export function RecommendationCard({
                 <Rise
                   index={options.length}
                   data-testid="bottleneck"
-                  className="flex items-start gap-2 bg-soft-bg/50 border border-[#fee685] rounded-field p-4"
+                  className="flex items-start gap-2 bg-soft-bg/50 border border-soft rounded-field p-4"
                 >
                   {characterIconPath(bottleneckCharacter) && (
                     <img
                       data-testid="bottleneck-character"
                       src={characterIconPath(bottleneckCharacter) ?? undefined}
+                      srcSet={characterIconSrcSet(bottleneckCharacter)}
                       alt=""
                       aria-hidden
                       className="w-6 h-6 shrink-0 object-contain"
@@ -207,7 +208,7 @@ export function RecommendationCard({
                       }}
                     />
                   )}
-                  <p className="text-[11px] font-bold text-[#8a5a00] leading-[1.6]">
+                  <p className="text-[11px] font-bold text-soft-ink leading-[1.6]">
                     💡 <b className="font-black">{R.bottleneck}</b>님만 시간을 내주시면 가능한
                     시간이 <b className="font-black">{R.bestGain}</b>개 더 생겨요!
                   </p>
