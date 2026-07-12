@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { DAYS, key, type RecommendResult, type WindowEval } from '../engine'
 import { hhmm } from '../lib/slots'
+import { characterIconPath } from '../lib/characters'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   onUnconfirm?: () => void
   /** false면 확정/확정취소 버튼을 숨기고 정보만 보여준다 (참여자 링크 — 관리 권한 없음). 기본 true */
   canManage?: boolean
+  /** 병목 참여자의 캐릭터 코드 — 있으면 안내 문구 옆에 아이콘 표시 */
+  bottleneckCharacter?: string | null
 }
 
 const WEEKDAYS_KO = ['일', '월', '화', '수', '목', '금', '토']
@@ -98,6 +101,7 @@ export function RecommendationCard({
   onConfirm,
   onUnconfirm,
   canManage = true,
+  bottleneckCharacter,
 }: Props) {
   const total = R.reqCount + R.optCount
   const isPerfect = R.perfect.length > 0
@@ -189,8 +193,20 @@ export function RecommendationCard({
                 <Rise
                   index={options.length}
                   data-testid="bottleneck"
-                  className="bg-soft-bg/50 border border-[#fee685] rounded-field p-4"
+                  className="flex items-start gap-2 bg-soft-bg/50 border border-[#fee685] rounded-field p-4"
                 >
+                  {characterIconPath(bottleneckCharacter) && (
+                    <img
+                      data-testid="bottleneck-character"
+                      src={characterIconPath(bottleneckCharacter) ?? undefined}
+                      alt=""
+                      aria-hidden
+                      className="w-6 h-6 shrink-0 object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  )}
                   <p className="text-[11px] font-bold text-[#8a5a00] leading-[1.6]">
                     💡 <b className="font-black">{R.bottleneck}</b>님만 시간을 내주시면 가능한
                     시간이 <b className="font-black">{R.bestGain}</b>개 더 생겨요!

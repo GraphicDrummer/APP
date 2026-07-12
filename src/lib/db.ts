@@ -195,7 +195,7 @@ export async function addParticipant(input: AddParticipantInput): Promise<Partic
         name: input.name,
         role: input.role ?? 'required',
         submitted_at: null,
-        // 재미로 배정하는 캐릭터 — 13종 중 무작위 하나. 화면 표시는 아직 없음.
+        // 재미로 배정하는 캐릭터 — 13종 중 무작위 하나. 병목 안내 문구 옆 아이콘에 쓰인다.
         character: randomCharacter(),
       })
       .select()

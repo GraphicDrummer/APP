@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import confetti from 'canvas-confetti'
-import { recommend, type CellState, type Person } from '../engine'
+import { DAYS, recommend, type CellState, type Person } from '../engine'
 import {
   adminSetConfirmedSlot,
   adminUpdateMeetingInfo,
@@ -25,7 +25,12 @@ import { AnimatePresence, motion } from 'motion/react'
 import { press, pressSpring, riseIn, spring } from '../lib/motion'
 import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '../components/ui'
 import { AvailabilityGrid, type CascadeSignal } from '../components/AvailabilityGrid'
-import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
+import {
+  ChipRow,
+  HourRangePicker,
+  type ChipRowHandle,
+  type HourRangePickerHandle,
+} from '../components/HourRangePicker'
 import { PersonTabs } from '../components/PersonTabs'
 import { RecommendationCard } from '../components/RecommendationCard'
 
@@ -194,6 +199,9 @@ export function MeetingPage() {
   const [editDeadlineHour, setEditDeadlineHour] = useState(18)
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  // 정보 수정 카드가 펼쳐지는 애니메이션이 끝난 시점에 시간 칩을 중앙정렬하기 위한 핸들
+  const editHourPickerRef = useRef<HourRangePickerHandle>(null)
+  const editDeadlineHourRef = useRef<ChipRowHandle>(null)
 
   const monday = useMemo(
     () => (meeting ? mondayOf(parseDateRange(meeting.date_range).start) : null),
@@ -262,6 +270,16 @@ export function MeetingPage() {
 
   // 아직 시간표를 제출하지 않은 참여자 — 놀리는 톤의 대기 안내에 쓴다
   const pendingNames = useMemo(() => rows.filter((r) => !r.submitted_at).map((r) => r.name), [rows])
+
+  // "지금까지 입력 기준 유력해요" 힌트 — recommend() 결과를 그대로 재사용, 별도 계산 없음.
+  // 아직 다 안 걷힌(pendingNames 있음) + 미확정 상태에서만 보여준다.
+  const topLikely = result && result.perfect.length > 0 ? result.perfect[0] : null
+  const showLikelyHint = !!topLikely && pendingNames.length > 0 && !meeting?.confirmed_slot
+
+  // 병목 참여자의 캐릭터 아이콘 — result.bottleneck은 참여자 표시 이름(=rows[].name)과 같다
+  const bottleneckCharacter = result?.bottleneck
+    ? (rows.find((r) => r.name === result.bottleneck)?.character ?? null)
+    : null
 
   const cycleCell = (d: number, h: number) => {
     const k = `${d}-${h}`
@@ -648,6 +666,10 @@ export function MeetingPage() {
                   initial={riseIn.initial}
                   animate={riseIn.animate}
                   transition={spring}
+                  onAnimationComplete={() => {
+                    editHourPickerRef.current?.center()
+                    editDeadlineHourRef.current?.center()
+                  }}
                   className={`${cardCls} p-4 space-y-3`}
                 >
                   <Field label="모임 제목">
@@ -697,6 +719,7 @@ export function MeetingPage() {
                       시간 범위
                     </span>
                     <HourRangePicker
+                      ref={editHourPickerRef}
                       start={editHourStart}
                       end={editHourEnd}
                       onChange={(s, e) => {
@@ -744,6 +767,7 @@ export function MeetingPage() {
                             마감 시각
                           </span>
                           <ChipRow
+                            ref={editDeadlineHourRef}
                             testId="edit-deadline-hour"
                             options={DEADLINE_HOURS}
                             value={editDeadlineHour}
@@ -794,6 +818,7 @@ export function MeetingPage() {
               onConfirm={(k) => void confirmSlot(k)}
               onUnconfirm={() => void unconfirm()}
               canManage={isAdmin}
+              bottleneckCharacter={bottleneckCharacter}
             />
           )}
 
@@ -821,6 +846,21 @@ export function MeetingPage() {
 
           {people[selected] && (
             <div className="mt-2.5">
+              <AnimatePresence initial={false}>
+                {showLikelyHint && topLikely && (
+                  <motion.p
+                    key="likely-hint"
+                    data-testid="likely-hint"
+                    initial={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto', marginBottom: 10 }}
+                    exit={{ opacity: 0, y: -4, height: 0, marginBottom: 0 }}
+                    transition={spring}
+                    className="overflow-hidden text-[12.5px] font-bold text-primary bg-primary/8 rounded-field px-3 py-2 text-center"
+                  >
+                    지금까지 입력 기준, {DAYS[topLikely.d]}요일 {hhmm(topLikely.h)}가 유력해요
+                  </motion.p>
+                )}
+              </AnimatePresence>
               <AnimatePresence initial={false}>
                 {showGridHint && (
                   <motion.p

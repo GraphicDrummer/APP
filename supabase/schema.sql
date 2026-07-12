@@ -40,10 +40,11 @@ create table public.participants (
   role         text not null default 'required' check (role in ('required', 'optional')),
   -- 가용 시간 제출 완료 시각 (null이면 아직 미제출)
   submitted_at timestamptz,
-  -- 재미로 배정하는 캐릭터 13종 중 하나 (프론트에서 무작위 배정). 화면 표시는 아직 없음.
+  -- 재미로 배정하는 캐릭터 — 12지신 + 고양이 13종 중 하나(프론트에서 무작위 배정).
+  -- 병목 안내 문구 옆 아이콘에 쓰인다(public/characters/TTAK_CHA_NN_Name.png).
   character    text check (character in (
-    'tiger', 'cat', 'dog', 'rabbit', 'fox', 'bear', 'panda',
-    'koala', 'lion', 'elephant', 'penguin', 'owl', 'otter'
+    'rat', 'ox', 'tiger', 'rabbit', 'dragon', 'snake', 'horse',
+    'sheep', 'monkey', 'rooster', 'dog', 'pig', 'cat'
   ))
 );
 
