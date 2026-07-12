@@ -51,7 +51,12 @@ function RoleTab({
     <motion.button
       type="button"
       data-testid={testId}
-      onClick={onClick}
+      onClick={(e) => {
+        // 부모 칩 전체가 클릭 영역이라, 배지 클릭이 참여자 선택으로도 번지지
+        // 않도록 여기서 막는다 — 배지는 역할 전환만 한다.
+        e.stopPropagation()
+        onClick()
+      }}
       animate={controls}
       whileTap={press}
       transition={pressSpring}
@@ -85,26 +90,33 @@ export function PersonTabs({ people, selected, onSelect, onToggleRole, hintFirst
           return (
             <motion.div
               key={p.id}
+              data-testid={`person-${p.id}`}
+              role="button"
+              tabIndex={0}
+              aria-pressed={active}
+              onClick={() => onSelect(i)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  onSelect(i)
+                }
+              }}
               initial={riseIn.initial}
               animate={riseIn.animate}
               transition={{ ...spring, delay: i * STAGGER }}
-              className={`flex-none flex items-center gap-1.5 rounded-field border pl-2.5 pr-2 py-2.5 transition-[opacity,background-color,border-color] duration-[120ms] motion-reduce:transition-none ${
+              whileTap={{ ...press, transition: pressSpring }}
+              className={`flex-none flex items-center gap-1.5 rounded-field border pl-2.5 pr-2 py-2.5 cursor-pointer transition-[opacity,background-color,border-color] duration-[120ms] motion-reduce:transition-none ${
                 active ? 'bg-ink border-ink' : 'bg-white border-line'
               } ${dim ? 'opacity-40' : ''}`}
             >
               <CharacterIcon code={p.character} size={18} />
-              <motion.button
-                type="button"
-                data-testid={`person-${p.id}`}
-                onClick={() => onSelect(i)}
-                whileTap={press}
-                transition={pressSpring}
-                className={`font-galmuri11 text-[13px] font-black cursor-pointer whitespace-nowrap ${
+              <span
+                className={`font-galmuri11 text-[13px] font-black whitespace-nowrap ${
                   active ? 'text-white' : 'text-ink'
                 }`}
               >
                 {p.id}
-              </motion.button>
+              </span>
               <RoleTab
                 active={active}
                 role={p.role}

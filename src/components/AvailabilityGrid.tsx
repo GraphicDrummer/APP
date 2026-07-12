@@ -64,8 +64,8 @@ function Cell({
   useEffect(() => {
     if (!affected) return
     void controls.start({
-      scale: [1, 1.22, 1],
-      transition: { delay, duration: 0.42, times: [0, 0.4, 1], ease: 'easeInOut' },
+      scale: [1, 1.08, 1],
+      transition: { delay, duration: 0.3, times: [0, 0.4, 1], ease: 'easeInOut' },
     })
     // nonce가 바뀔 때마다(같은 줄 반복 클릭 포함) 펄스를 다시 재생
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,9 +76,9 @@ function Cell({
     if (!hint) return
     const t = window.setTimeout(() => {
       void controls.start({
-        y: [0, -6, 1, 0],
-        scale: [1, 1.16, 0.96, 1],
-        transition: { duration: 0.65, times: [0, 0.35, 0.7, 1], ease: 'easeInOut' },
+        y: [0, -5, 1, 0],
+        scale: [1, 1.1, 0.97, 1],
+        transition: { duration: 0.6, times: [0, 0.35, 0.7, 1], ease: 'easeInOut' },
       })
     }, 550)
     return () => window.clearTimeout(t)
@@ -132,9 +132,9 @@ function HeaderCell({
     if (!hint) return
     const t = window.setTimeout(() => {
       void controls.start({
-        filter: ['brightness(1)', 'brightness(1.5)', 'brightness(1)'],
-        scale: [1, 1.06, 1],
-        transition: { duration: 0.6, ease: 'easeInOut' },
+        filter: ['brightness(1)', 'brightness(1.25)', 'brightness(1)'],
+        scale: [1, 1.03, 1],
+        transition: { duration: 0.55, ease: 'easeInOut' },
       })
     }, 550)
     return () => window.clearTimeout(t)

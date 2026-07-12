@@ -2,7 +2,7 @@
 // PRD 2.3 / 개발 플랜 3.5 참고. ttak_engine_demo.html의 recommend() 로직을 그대로 이식.
 
 export const DAYS = ['월', '화', '수', '목', '금'] as const
-// 기본 시간대(데모용). 특정 시각에 의미를 두지 않는다 — 실제 회의은 주최자가 범위를 지정.
+// 기본 시간대(데모용). 특정 시각에 의미를 두지 않는다 — 실제 회의는 주최자가 범위를 지정.
 export const HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17] as const
 
 export type Day = (typeof DAYS)[number]

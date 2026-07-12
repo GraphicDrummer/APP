@@ -1,9 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, MotionConfig, useAnimationControls } from 'motion/react'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
-import { randomCharacter, withCharacterIcons, type ParticipantCharacter } from '../lib/characters'
+import {
+  PARTICIPANT_CHARACTERS,
+  randomCharacter,
+  withCharacterIcons,
+  type ParticipantCharacter,
+} from '../lib/characters'
 import { CharacterIcon } from '../components/CharacterIcon'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
@@ -152,6 +157,16 @@ export function CreateMeetingPage() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [organizer, setOrganizer] = useState('')
+  // 주최자 아이콘 — 기본은 호랑이(리더 상징), 본인이 다른 캐릭터로 바꾸고 싶으면
+  // 아이콘을 눌러 다음 캐릭터로 순환한다. 참여자와 달리 DB 컬럼이 없어 이 화면
+  // 안에서만 보이는 장식이다(제출 시 저장되지 않음).
+  const [organizerCharacter, setOrganizerCharacter] = useState<ParticipantCharacter>('tiger')
+  const cycleOrganizerCharacter = () => {
+    setOrganizerCharacter((cur) => {
+      const i = PARTICIPANT_CHARACTERS.indexOf(cur)
+      return PARTICIPANT_CHARACTERS[(i + 1) % PARTICIPANT_CHARACTERS.length]
+    })
+  }
   const [location, setLocation] = useState('')
   const [dateStart, setDateStart] = useState('')
   const [dateEnd, setDateEnd] = useState('')
@@ -175,6 +190,20 @@ export function CreateMeetingPage() {
     setHintActive(false)
     setActiveSlot((cur) => (cur === k ? null : k))
   }
+  // 문장형 폼 바깥을 클릭하면 열려있는 슬롯 편집 패널을 닫는다 — 값을 고른 뒤
+  // 다른 곳을 눌러도 패널이 계속 떠 있던 문제 수정. 폼 내부 클릭(다른 슬롯으로
+  // 전환, 입력창 포커스 등)은 formRef 안이라 여기 걸리지 않는다.
+  const formRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!activeSlot) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (formRef.current && !formRef.current.contains(e.target as Node)) {
+        setActiveSlot(null)
+      }
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [activeSlot])
   // 시간대·소요시간은 기본값이 있어서, 사용자가 직접 골랐는지를 따로 추적해
   // 빈 상태에선 자연어 플레이스홀더("이 시간대"/"딱 맞는 시간")로 보여준다.
   const [hoursTouched, setHoursTouched] = useState(false)
@@ -472,7 +501,7 @@ export function CreateMeetingPage() {
         <Enter delay={0.08}>
           {/* 문장형 폼 — 데이터 절 단위로 줄을 나눈다. 각 [ ]는 밑줄 친 탭 영역,
               누르면 그 줄 아래로 입력 UI가 펼쳐진다 */}
-          <div className="font-galmuri11 text-[17px] font-bold leading-[1.5] tracking-[-0.3px] space-y-1.5">
+          <div ref={formRef} className="font-galmuri11 text-[17px] font-bold leading-[1.5] tracking-[-0.3px] space-y-1.5">
             {/* 새로운 회의, */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')} hintIndex={0} hintActive={hintActive}>
@@ -683,13 +712,27 @@ export function CreateMeetingPage() {
         <Enter delay={0.12}>
           <div className="mt-8 space-y-5">
             <Field label="주최자">
-              <TextInput
-                data-testid="organizer"
-                value={organizer}
-                onFocus={() => setHintActive(false)}
-                onChange={(e) => setOrganizer(e.target.value)}
-                placeholder="예: 호랑이 팀장님"
-              />
+              <div className="flex items-center gap-2">
+                <motion.button
+                  type="button"
+                  data-testid="organizer-character"
+                  aria-label="주최자 아이콘 바꾸기"
+                  onClick={cycleOrganizerCharacter}
+                  whileTap={press}
+                  transition={pressSpring}
+                  className="flex-none w-9 h-9 rounded-full bg-surface-sub/40 border-2 border-line flex items-center justify-center cursor-pointer"
+                >
+                  <CharacterIcon code={organizerCharacter} size={22} />
+                </motion.button>
+                <TextInput
+                  data-testid="organizer"
+                  className="flex-1 min-w-0"
+                  value={organizer}
+                  onFocus={() => setHintActive(false)}
+                  onChange={(e) => setOrganizer(e.target.value)}
+                  placeholder="예: 호랑이 팀장님"
+                />
+              </div>
             </Field>
 
             <div>

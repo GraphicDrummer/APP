@@ -488,8 +488,8 @@ export function MeetingPage() {
   if (notFound) {
     return (
       <div className="p-8 text-center">
-        <p className="text-lg font-extrabold">회의을 찾을 수 없어요</p>
-        <p className="text-sm text-neutral-500 mt-1">リンク가 정확한지 확인해주세요.</p>
+        <p className="text-lg font-extrabold">회의를 찾을 수 없어요</p>
+        <p className="text-sm text-neutral-500 mt-1">링크가 정확한지 확인해주세요.</p>
       </div>
     )
   }
@@ -512,13 +512,17 @@ export function MeetingPage() {
     return (
       <div className="min-h-screen bg-app text-ink">
         {/* 확정 완결 화면 전용 일러스트 — 컨페티(캔버스, 화면 최상단 레이어) 아래,
-            본문 콘텐츠보다는 뒤(z-0)에 깔려 화면 하단에 고정된다 */}
-        <img
-          src="/final_image.png"
-          alt=""
-          aria-hidden
-          className="fixed inset-x-0 bottom-0 z-0 w-full object-contain object-bottom pointer-events-none select-none"
-        />
+            본문 콘텐츠보다는 뒤(z-0)에 깔려 화면 하단에 고정된다. 넓은 데스크톱
+            화면에서 이미지가 뷰포트 끝까지 늘어나지 않도록 앱 본문과 같은
+            max-w-[430px]로 폭을 제한하고, 좌우 마진을 둔다. */}
+        <div className="fixed inset-x-0 bottom-0 z-0 flex justify-center pointer-events-none">
+          <img
+            src="/final_image.png"
+            alt=""
+            aria-hidden
+            className="w-full max-w-[430px] px-6 object-contain object-bottom select-none"
+          />
+        </div>
         <div className="relative z-10 max-w-[430px] mx-auto">
           <StepTabs
             current={2}
