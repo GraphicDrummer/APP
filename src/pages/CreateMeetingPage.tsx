@@ -1,14 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion, MotionConfig, useAnimationControls } from 'motion/react'
 import { addParticipant, createMeeting, type Role } from '../lib/db'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
-import {
-  PARTICIPANT_CHARACTERS,
-  randomCharacter,
-  withCharacterIcons,
-  type ParticipantCharacter,
-} from '../lib/characters'
+import { randomCharacter, withCharacterIcons, type ParticipantCharacter } from '../lib/characters'
 import { CharacterIcon } from '../components/CharacterIcon'
 import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
@@ -86,6 +81,7 @@ function Slot({
     <motion.button
       type="button"
       data-testid={testId}
+      data-slot-ui
       onClick={onToggle}
       animate={controls}
       whileTap={press}
@@ -113,6 +109,7 @@ function Slot({
 function EditorPanel({ children }: { children: React.ReactNode }) {
   return (
     <motion.div
+      data-slot-ui
       initial={{ opacity: 0, height: 0 }}
       animate={{ opacity: 1, height: 'auto' }}
       exit={{ opacity: 0, height: 0 }}
@@ -157,16 +154,6 @@ export function CreateMeetingPage() {
   const navigate = useNavigate()
   const [title, setTitle] = useState('')
   const [organizer, setOrganizer] = useState('')
-  // 주최자 아이콘 — 기본은 호랑이(리더 상징), 본인이 다른 캐릭터로 바꾸고 싶으면
-  // 아이콘을 눌러 다음 캐릭터로 순환한다. 참여자와 달리 DB 컬럼이 없어 이 화면
-  // 안에서만 보이는 장식이다(제출 시 저장되지 않음).
-  const [organizerCharacter, setOrganizerCharacter] = useState<ParticipantCharacter>('tiger')
-  const cycleOrganizerCharacter = () => {
-    setOrganizerCharacter((cur) => {
-      const i = PARTICIPANT_CHARACTERS.indexOf(cur)
-      return PARTICIPANT_CHARACTERS[(i + 1) % PARTICIPANT_CHARACTERS.length]
-    })
-  }
   const [location, setLocation] = useState('')
   const [dateStart, setDateStart] = useState('')
   const [dateEnd, setDateEnd] = useState('')
@@ -190,16 +177,15 @@ export function CreateMeetingPage() {
     setHintActive(false)
     setActiveSlot((cur) => (cur === k ? null : k))
   }
-  // 문장형 폼 바깥을 클릭하면 열려있는 슬롯 편집 패널을 닫는다 — 값을 고른 뒤
-  // 다른 곳을 눌러도 패널이 계속 떠 있던 문제 수정. 폼 내부 클릭(다른 슬롯으로
-  // 전환, 입력창 포커스 등)은 formRef 안이라 여기 걸리지 않는다.
-  const formRef = useRef<HTMLDivElement>(null)
+  // 슬롯 UI(밑줄 버튼·편집 패널) 바깥을 클릭하면 열려있는 편집 패널을 닫는다.
+  // 이전엔 문장형 폼 컨테이너 전체를 기준으로 삼아서, 문장 사이의 일반 텍스트나
+  // 여백을 눌러도 안 닫혔다 — 이제 data-slot-ui가 붙은 요소(슬롯 버튼, 편집
+  // 패널) 안에서의 클릭만 예외로 두고, 그 밖은 화면 어디를 눌러도 닫힌다.
   useEffect(() => {
     if (!activeSlot) return
     const onPointerDown = (e: PointerEvent) => {
-      if (formRef.current && !formRef.current.contains(e.target as Node)) {
-        setActiveSlot(null)
-      }
+      const el = e.target as Element | null
+      if (!el?.closest?.('[data-slot-ui]')) setActiveSlot(null)
     }
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
@@ -216,12 +202,21 @@ export function CreateMeetingPage() {
   const [copied, setCopied] = useState(false)
   const [adminCopied, setAdminCopied] = useState(false)
 
+  // 주최자는 자동으로 참여자 1번(필참·호랑이)이 된다 — 같은 이름을 참여자로
+  // 또 추가하면 중복이라 무시한다.
   const addPerson = () => {
     const name = newName.trim()
-    if (!name || people.some((p) => p.name === name)) return
+    if (!name || name === organizer.trim() || people.some((p) => p.name === name)) return
     setPeople([...people, { name, role: 'required', character: randomCharacter() }])
     setNewName('')
   }
+
+  // 제출용 최종 명단 — 주최자(호랑이, 필참)를 맨 앞에 두고, 주최자와 같은 이름의
+  // 참여자 입력이 있었다면 걸러낸다.
+  const roster = (): DraftPerson[] => [
+    { name: organizer.trim(), role: 'required', character: 'tiger' as ParticipantCharacter },
+    ...people.filter((p) => p.name !== organizer.trim()),
+  ]
 
   const toggleRole = (i: number) => {
     setPeople((prev) =>
@@ -236,8 +231,9 @@ export function CreateMeetingPage() {
   }
 
   const submit = async () => {
-    if (!title.trim() || !organizer.trim() || !dateStart || !dateEnd || people.length === 0) {
-      setError('제목, 주최자, 날짜 범위를 채우고 참여자를 1명 이상 추가해주세요.')
+    // 주최자가 자동으로 참여자 1번이 되므로, 별도 참여자 없이도 회의를 만들 수 있다.
+    if (!title.trim() || !organizer.trim() || !dateStart || !dateEnd) {
+      setError('제목, 주최자, 날짜 범위를 채워주세요.')
       return
     }
     if (dateEnd < dateStart) {
@@ -264,7 +260,7 @@ export function CreateMeetingPage() {
           ? new Date(`${deadlineDate}T${pad2(deadlineHour)}:00:00`).toISOString()
           : undefined,
       })
-      for (const p of people) {
+      for (const p of roster()) {
         await addParticipant({ meetingId: meeting.id, name: p.name, role: p.role, character: p.character })
       }
 
@@ -341,26 +337,29 @@ export function CreateMeetingPage() {
         </div>
         <div className="max-w-[430px] mx-auto px-[22px] pt-6 pb-4">
           <Enter className="text-center">
-            <motion.div
+            <motion.p
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ ...spring, delay: 0.05 }}
-              className="mx-auto w-[52px] h-[52px] rounded-[15px] bg-primary flex items-center justify-center"
+              className="inline-block rounded-full bg-accent border-2 border-line text-white font-galmuri9 text-[13px] font-black px-4 py-1.5"
             >
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M5 12.5 10 17.5 19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </motion.div>
-            <p className="text-[13px] font-bold text-ink-muted mt-4">회의가 만들어졌어요</p>
-            <h1 className="text-[22.5px] font-black tracking-[-1.1px] mt-1">{withCharacterIcons(title)}</h1>
+              회의가 만들어졌어요
+            </motion.p>
+            <h1 className="font-galmuri11 text-[24px] font-black tracking-[-1px] mt-3">
+              {withCharacterIcons(title)}
+            </h1>
             <p className="text-[13px] text-ink-muted mt-1">
-              {dateStart} ~ {dateEnd} · {durationSlots}시간
+              {dateStart} ~ {dateEnd} · {durationSlots}시간 · {roster().length}명
             </p>
           </Enter>
 
           <Enter delay={0.08} className={`${cardCls} p-5 mt-7`}>
             <CardLabel>참여 링크 (단톡방 공유용)</CardLabel>
-            <div className="mt-3 bg-surface-sub/50 rounded-full px-3 py-2.5 overflow-hidden">
+            {/* 코드가 곧 링크(/m/코드) — 픽셀 타이포로 크게 보여주는 게 이 화면의 히어로 */}
+            <p className="font-galmuri11 text-[30px] font-black tracking-[1px] text-accent mt-2">
+              {new URL(link).pathname.split('/').pop()}
+            </p>
+            <div className="mt-2 bg-surface-sub/50 rounded-full px-3 py-2.5 overflow-hidden">
               <p data-testid="share-link" className="text-[13px] font-bold truncate">
                 {shortLink}
               </p>
@@ -372,7 +371,7 @@ export function CreateMeetingPage() {
               onClick={() => void shareLink()}
               whileTap={press}
               transition={pressSpring}
-              className="w-full mt-4 rounded-field bg-[#FEE500] text-[#191919] py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full mt-4 rounded-full border-2 border-line bg-[#FEE500] text-[#191919] py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
             >
               <KakaoIcon />
               카카오톡으로 공유하기
@@ -412,7 +411,7 @@ export function CreateMeetingPage() {
               onClick={() => void shareAdminLink()}
               whileTap={press}
               transition={pressSpring}
-              className="w-full mt-3 rounded-field bg-[#FEE500] text-[#191919] py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full mt-3 rounded-full border-2 border-line bg-[#FEE500] text-[#191919] py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
             >
               <KakaoIcon />
               카카오톡으로 나에게 보내기
@@ -430,9 +429,9 @@ export function CreateMeetingPage() {
           </Enter>
 
           <Enter delay={0.12} className={`${cardCls} p-5 mt-4`}>
-            <CardLabel>참여자 {people.length}명</CardLabel>
+            <CardLabel>참여자 {roster().length}명</CardLabel>
             <ul className="mt-2">
-              {people.map((p, i) => (
+              {roster().map((p, i) => (
                 <motion.li
                   key={p.name}
                   initial={riseIn.initial}
@@ -447,7 +446,13 @@ export function CreateMeetingPage() {
                     <span className="text-[13px] font-bold">{p.name}</span>
                   </span>
                   <span className="flex items-center gap-2">
-                    <RoleBadge role={p.role} variant="tint" />
+                    {i === 0 ? (
+                      <span className="rounded-full bg-accent/10 text-accent px-2 py-0.5 font-galmuri9 text-[10px] font-black">
+                        주최자
+                      </span>
+                    ) : (
+                      <RoleBadge role={p.role} variant="tint" />
+                    )}
                     <span className="text-[10px] font-bold text-ink-muted/50">고민 중</span>
                   </span>
                 </motion.li>
@@ -456,17 +461,17 @@ export function CreateMeetingPage() {
           </Enter>
 
           <Enter delay={0.16}>
+            <p className="text-center font-galmuri11 text-[13px] font-bold text-ink mt-6">
+              이동하기 전 관리자 링크를 꼭 저장하세요!
+            </p>
             <Button
               variant="dark"
               data-testid="open-meeting"
               onClick={() => void navigate(path)}
-              className="w-full mt-6"
+              className="w-full mt-2.5"
             >
-              내 시간 입력하기 →
+              내 시간 입력하기
             </Button>
-            <p className="text-center text-[11px] font-bold text-ink-muted/50 mt-3">
-              참여자들에게 링크를 공유해 각자 응답받으세요
-            </p>
           </Enter>
           <Footer />
         </div>
@@ -488,20 +493,18 @@ export function CreateMeetingPage() {
           딱<span className="text-primary">.</span>
         </p>
         <Enter>
-          <header className="pt-1 pb-5">
-            <h1 className="text-[26px] font-black tracking-[-1.3px] leading-tight">
+          {/* 위계: 작은 아이브로 한 줄 → 문장형 폼이 화면의 주인공(히어로 타이포) */}
+          <header className="pt-3 pb-6">
+            <h1 className="font-galmuri11 text-[14px] font-bold text-ink">
               새로운 회의를 시작해요<span className="text-primary">.</span>
             </h1>
-            <p className="font-galmuri11 text-[13px] text-ink-muted mt-1.5">
-              밑줄 친 곳을 눌러 채워주세요.
-            </p>
           </header>
         </Enter>
 
         <Enter delay={0.08}>
           {/* 문장형 폼 — 데이터 절 단위로 줄을 나눈다. 각 [ ]는 밑줄 친 탭 영역,
               누르면 그 줄 아래로 입력 UI가 펼쳐진다 */}
-          <div ref={formRef} className="font-galmuri11 text-[17px] font-bold leading-[1.5] tracking-[-0.3px] space-y-1.5">
+          <div className="font-galmuri11 text-[21px] font-bold leading-[1.6] tracking-[-0.4px] space-y-2.5">
             {/* 새로운 회의, */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')} hintIndex={0} hintActive={hintActive}>
@@ -707,23 +710,23 @@ export function CreateMeetingPage() {
               )}
             </AnimatePresence>
           </div>
+          <p className="font-galmuri9 text-[12px] font-bold text-ink-muted/60 mt-4">
+            밑줄 친 곳을 눌러 채워주세요.
+          </p>
         </Enter>
 
         <Enter delay={0.12}>
           <div className="mt-8 space-y-5">
             <Field label="주최자">
               <div className="flex items-center gap-2">
-                <motion.button
-                  type="button"
+                {/* 주최자 캐릭터는 호랑이 고정 — 리더의 상징. 참여자 1번으로 자동 포함된다 */}
+                <span
                   data-testid="organizer-character"
-                  aria-label="주최자 아이콘 바꾸기"
-                  onClick={cycleOrganizerCharacter}
-                  whileTap={press}
-                  transition={pressSpring}
-                  className="flex-none w-9 h-9 rounded-full bg-surface-sub/40 border-2 border-line flex items-center justify-center cursor-pointer"
+                  aria-hidden
+                  className="flex-none w-9 h-9 rounded-full bg-surface border-2 border-line flex items-center justify-center"
                 >
-                  <CharacterIcon code={organizerCharacter} size={22} />
-                </motion.button>
+                  <CharacterIcon code="tiger" size={22} />
+                </span>
                 <TextInput
                   data-testid="organizer"
                   className="flex-1 min-w-0"
@@ -733,11 +736,29 @@ export function CreateMeetingPage() {
                   placeholder="예: 호랑이 팀장님"
                 />
               </div>
+              <p className="pl-1 pt-1.5 text-[11px] font-bold text-ink-muted/60">
+                주최자는 참여자 1번으로 자동 포함돼요
+              </p>
             </Field>
 
             <div>
               <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">참여자</span>
               <div className="flex flex-wrap gap-2">
+                {organizer.trim() && (
+                  <motion.span
+                    data-testid="organizer-chip"
+                    initial={riseIn.initial}
+                    animate={riseIn.animate}
+                    transition={spring}
+                    className="inline-flex items-center gap-1.5 bg-surface border border-line rounded-field pl-2.5 pr-3 py-2"
+                  >
+                    <CharacterIcon code="tiger" size={24} />
+                    <span className="text-[13px] font-bold">{organizer.trim()}</span>
+                    <span className="rounded-full border-2 border-line bg-accent text-white px-2 py-0.5 font-galmuri9 text-[10px] font-black whitespace-nowrap">
+                      주최자
+                    </span>
+                  </motion.span>
+                )}
                 {people.map((p, i) => (
                   <motion.span
                     key={p.name}
@@ -828,8 +849,11 @@ export function CreateMeetingPage() {
         </Enter>
 
         <div className="sticky bottom-0 -mx-[22px] px-[22px] pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
+          {/* 필수값이 다 차기 전엔 회색 — 채워지는 순간 파랑으로 바뀌며 "이제 만들 수 있음"을
+              알린다. 회색 상태에서도 눌러서 뭐가 부족한지 확인할 수는 있다. */}
           <Button
             data-testid="create-meeting"
+            variant={title.trim() && organizer.trim() && dateStart && dateEnd ? 'primary' : 'muted'}
             onClick={() => void submit()}
             disabled={saving}
             breathe={hintActive && !saving}

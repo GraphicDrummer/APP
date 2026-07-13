@@ -36,7 +36,13 @@ function Rise({
   )
 }
 
-/** 파랑(추천)/초록(확정) 공통 히어로 카드 레이아웃. 버튼 props를 생략하면 정보만 보여준다 */
+/** 추천(주황=아직 미확정)/확정(파랑) 공통 히어로 카드 레이아웃. 버튼 props를 생략하면 정보만 보여준다 */
+const HERO_TONE = {
+  // 색 의미 체계: 주황 = 미정(추천됐지만 아직 확정 전), 파랑 = 확정
+  accent: { bg: 'bg-accent', buttonText: 'text-accent' },
+  confirm: { bg: 'bg-confirm', buttonText: 'text-confirm' },
+} as const
+
 function HeroCard({
   tone,
   label,
@@ -47,7 +53,7 @@ function HeroCard({
   buttonTestId,
   onButton,
 }: {
-  tone: 'primary' | 'confirm'
+  tone: keyof typeof HERO_TONE
   label: string
   day: string
   time: string
@@ -57,10 +63,13 @@ function HeroCard({
   onButton?: () => void
 }) {
   return (
-    <div className={`rounded-field p-[22px] ${tone === 'primary' ? 'bg-primary' : 'bg-confirm'}`}>
-      <p className="text-[11px] font-black tracking-[1.65px] uppercase text-white/70">{label}</p>
-      <p className="text-[13px] font-bold text-white/75 mt-4">{day}</p>
-      <p data-testid="rec-slot" className="text-[58px] font-black tracking-[-2.2px] leading-none text-white mt-0.5">
+    <div className={`rounded-card p-[22px] ${HERO_TONE[tone].bg}`}>
+      <p className="font-galmuri9 text-[11px] font-black tracking-[1.65px] uppercase text-white/80">{label}</p>
+      <p className="font-galmuri11 text-[15px] font-black text-white mt-4">{day}</p>
+      <p
+        data-testid="rec-slot"
+        className="font-galmuri11 text-[68px] font-black tracking-[-3px] leading-none text-white mt-1"
+      >
         {time}
       </p>
       <div className="flex flex-wrap gap-2 mt-4">
@@ -68,7 +77,7 @@ function HeroCard({
           <span
             key={c}
             className={`rounded-full px-3 py-1 text-[11px] font-bold text-white ${
-              i === 0 ? 'bg-white/20' : 'bg-white/15'
+              i === 0 ? 'bg-white/25' : 'bg-white/15'
             }`}
           >
             {c}
@@ -82,9 +91,7 @@ function HeroCard({
           onClick={onButton}
           whileTap={press}
           transition={pressSpring}
-          className={`mt-5 w-full h-[45px] rounded-[17px] bg-white text-[13px] font-black cursor-pointer ${
-            tone === 'primary' ? 'text-primary' : 'text-confirm'
-          }`}
+          className={`mt-5 w-full h-[46px] rounded-full bg-white font-galmuri11 text-[14px] font-black cursor-pointer ${HERO_TONE[tone].buttonText}`}
         >
           {buttonText}
         </motion.button>
@@ -135,7 +142,7 @@ export function RecommendationCard({
         ) : state === 'perfect' ? (
           <motion.div key="perfect" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
             <HeroCard
-              tone="primary"
+              tone="accent"
               label="추천 시간"
               day={`${DAYS[R.perfect[0].d]}요일`}
               time={hhmm(R.perfect[0].h)}
@@ -197,8 +204,8 @@ export function RecommendationCard({
                 >
                   <CharacterIcon data-testid="bottleneck-character" code={bottleneckCharacter} size={24} />
                   <p className="text-[11px] font-bold text-soft-ink leading-[1.6]">
-                    💡 <b className="font-black">{R.bottleneck}</b>님만 시간을 내주시면 가능한
-                    시간이 <b className="font-black">{R.bestGain}</b>개 더 생긴다는 건 절대 비밀입니다...! 🤫
+                    <b className="font-black text-accent">{R.bottleneck}</b>님만 시간을 내주시면 가능한
+                    시간이 <b className="font-black text-primary">{R.bestGain}개</b> 더 생긴다는 건 절대 비밀입니다...! 🤫
                   </p>
                 </Rise>
               )}

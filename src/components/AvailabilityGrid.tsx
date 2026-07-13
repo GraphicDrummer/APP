@@ -150,7 +150,7 @@ function HeaderCell({
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`w-full h-[30px] rounded-[13px] text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
+      className={`w-full h-[30px] rounded-full border-2 border-line text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
     >
       {children}
     </motion.button>
@@ -176,11 +176,12 @@ function uniformState(states: DisplayState[]): DisplayState | null {
   return states.every((s) => s === states[0]) ? states[0] : null
 }
 
-// 헤더 버튼 — 열 전체가 같은 상태면 그 상태의 색을 입어 인과를 보여준다
+// 헤더 버튼 — 기본은 흰 아웃라인 알약, 열 전체가 같은 상태면 그 상태의 색을 입어
+// 인과를 보여준다 (테두리는 셀과 동일하게 항상 진한 픽셀 테두리)
 const HEADER_STYLE: Record<string, string> = {
   available: 'bg-primary text-white',
-  soft: 'bg-soft-bg border border-soft text-soft-ink',
-  blocked: 'bg-surface-sub text-ink',
+  soft: 'bg-soft-bg text-soft-ink',
+  blocked: 'bg-white text-ink',
 }
 
 // 요일×시간 그리드 — 칸을 누르면 불가(기본) → 가능 → 애매 → 불가 순으로 순환

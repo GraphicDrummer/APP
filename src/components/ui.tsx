@@ -17,14 +17,18 @@ export const cardCls = 'bg-surface border-2 border-line rounded-card shadow-card
 
 // ---------- 버튼 ----------
 
-type ButtonVariant = 'primary' | 'confirm' | 'dark' | 'ghost' | 'danger'
+type ButtonVariant = 'primary' | 'accent' | 'confirm' | 'dark' | 'ghost' | 'danger' | 'muted'
 
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-primary text-white',
+  /** 주황 — 아직 미정인 단계의 행동(예: 조율 중 시간 저장) */
+  accent: 'bg-accent text-white',
   confirm: 'bg-confirm text-white',
   dark: 'bg-ink text-white',
   ghost: 'bg-surface text-ink shadow-card',
   danger: 'bg-danger text-white',
+  /** 아직 조건이 안 갖춰진 CTA — 회색이지만 눌러서 무엇이 부족한지 확인할 수 있다 */
+  muted: 'bg-surface-sub text-ink-muted',
 }
 
 interface ButtonProps extends HTMLMotionProps<'button'> {
@@ -57,7 +61,7 @@ export function Button({ variant = 'primary', className = '', breathe = false, .
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`rounded-field border-2 border-line px-4 py-3.5 font-galmuri11 text-[17px] font-extrabold cursor-pointer disabled:opacity-50 ${BUTTON_VARIANT[variant]} ${className}`}
+      className={`rounded-full border-2 border-line px-4 py-3.5 font-galmuri11 text-[17px] font-extrabold cursor-pointer disabled:opacity-50 ${BUTTON_VARIANT[variant]} ${className}`}
       {...rest}
     />
   )

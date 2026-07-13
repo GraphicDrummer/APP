@@ -28,7 +28,7 @@ import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '..
 import { AvailabilityGrid, type CascadeSignal } from '../components/AvailabilityGrid'
 import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
 import { PersonTabs } from '../components/PersonTabs'
-import { CharacterAvatarStack } from '../components/CharacterIcon'
+import { CharacterAvatarStack, CharacterIcon } from '../components/CharacterIcon'
 import { RecommendationCard } from '../components/RecommendationCard'
 
 // 기본값(빈 칸) = 불가. 눌러서 되는 시간만 칠한다: 불가(기본) → 가능 → 애매 → 불가.
@@ -51,12 +51,14 @@ function fmtConfirmed(iso: string): string {
   return `${date} (${WEEKDAYS_KO[d.getDay()]}) ${hhmm(d.getHours())}`
 }
 
+// 아이콘은 전부 currentColor — 올라가는 버튼/텍스트의 글자색을 그대로 따라간다.
+// (확정 화면처럼 배경이 통째로 바뀌는 곳에서도 색을 따로 지정할 필요가 없다)
 const iconCls = 'shrink-0' as const
 
 function CheckIcon({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
-      <path d="M5 12.5 10 17.5 19 7" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 12.5 10 17.5 19 7" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -64,8 +66,8 @@ function CheckIcon({ size = 28 }: { size?: number }) {
 function CalendarIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
-      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="white" strokeWidth="1.8" />
-      <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
     </svg>
   )
 }
@@ -75,11 +77,11 @@ function PinIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
       <path
         d="M12 21c4-4.5 7-7.9 7-11a7 7 0 1 0-14 0c0 3.1 3 6.5 7 11Z"
-        stroke="white"
+        stroke="currentColor"
         strokeWidth="1.8"
         strokeLinejoin="round"
       />
-      <circle cx="12" cy="10" r="2.4" stroke="white" strokeWidth="1.8" />
+      <circle cx="12" cy="10" r="2.4" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   )
 }
@@ -89,7 +91,7 @@ function LinkIcon() {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
       <path
         d="M9.5 14.5 14.5 9.5M10.5 6.5l1-1a4 4 0 0 1 5.657 5.657l-1.5 1.5M13.5 17.5l-1 1A4 4 0 0 1 6.843 12.843l1.5-1.5"
-        stroke="#303030"
+        stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -101,9 +103,9 @@ function LinkIcon() {
 function ImageIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
-      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="#303030" strokeWidth="1.8" />
-      <circle cx="8.5" cy="9.5" r="1.5" stroke="#303030" strokeWidth="1.8" />
-      <path d="m4.5 16 4.5-4.5 3 3 4-4 4.5 4.5" stroke="#303030" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+      <circle cx="8.5" cy="9.5" r="1.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="m4.5 16 4.5-4.5 3 3 4-4 4.5 4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -113,7 +115,7 @@ function RestartIcon() {
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
       <path
         d="M4 12a8 8 0 1 1 2.343 5.657M4 12V6m0 6h6"
-        stroke="#6f6f6f"
+        stroke="currentColor"
         strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -125,8 +127,8 @@ function RestartIcon() {
 function OtherCalendarIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden className={iconCls}>
-      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="#6f6f6f" strokeWidth="1.8" />
-      <path d="M3.5 9.5h17" stroke="#6f6f6f" strokeWidth="1.8" />
+      <rect x="3.5" y="5" width="17" height="16" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M3.5 9.5h17" stroke="currentColor" strokeWidth="1.8" />
     </svg>
   )
 }
@@ -497,6 +499,8 @@ export function MeetingPage() {
   const effectiveView = view ?? (meeting?.confirmed_slot ? 'done' : 'adjust')
   if (effectiveView === 'done' && meeting?.confirmed_slot) {
     const timeText = fmtConfirmed(meeting.confirmed_slot)
+    const confirmedDate = new Date(meeting.confirmed_slot)
+    const dayText = `${confirmedDate.getMonth() + 1}월 ${confirmedDate.getDate()}일 ${WEEKDAYS_KO[confirmedDate.getDay()]}요일`
     const ev = {
       title: meeting.title,
       startIso: meeting.confirmed_slot,
@@ -509,8 +513,10 @@ export function MeetingPage() {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     }
+    // 확정 화면은 화면 전체가 파랑으로 물든다 — "답이 정해졌다"를 색으로 선언.
+    // (색 의미 체계: 주황 = 미정, 파랑 = 확정)
     return (
-      <div className="min-h-screen bg-app text-ink">
+      <div className="min-h-screen bg-confirm text-white">
         {/* 확정 완결 화면 전용 일러스트 — 컨페티(캔버스, 화면 최상단 레이어) 아래,
             본문 콘텐츠보다는 뒤(z-0)에 깔려 화면 하단에 고정된다. 넓은 데스크톱
             화면에서 이미지가 뷰포트 끝까지 늘어나지 않도록 앱 본문과 같은
@@ -525,42 +531,37 @@ export function MeetingPage() {
         </div>
         <div className="relative z-10 max-w-[430px] mx-auto">
           <StepTabs
+            dark
             current={2}
             clickable={[false, true, false]}
             onStepClick={() => setView('adjust')}
             onBack={() => setView('adjust')}
           />
         </div>
-        <div className="relative z-10 max-w-[430px] mx-auto px-[22px] pt-8 pb-4 text-center">
+        <div className="relative z-10 max-w-[430px] mx-auto px-[22px] pt-6 pb-4 text-center">
           <Enter>
-            <div
-              data-testid="confirmed-card"
-              className="bg-confirm rounded-card p-8 flex flex-col items-center gap-5"
-            >
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ ...spring, delay: 0.05 }}
-                className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center"
-              >
-                <CheckIcon />
-              </motion.div>
-              <div>
-                <p className="text-[11px] font-black tracking-[2.2px] uppercase text-white/70">
-                  {withCharacterIcons('탕탕! 회의 소집 완료 🐯')}
-                </p>
-                <p className="text-[15px] font-bold text-white/90 mt-1">{withCharacterIcons(meeting.title)}</p>
-              </div>
+            <div data-testid="confirmed-card" className="flex flex-col items-center gap-1.5 pt-4">
+              <p className="font-galmuri9 text-[12px] font-black tracking-[1.5px] text-white/80">
+                {withCharacterIcons('탕탕! 회의 소집 완료 🐯')}
+              </p>
+              <p className="font-galmuri11 text-[16px] font-bold text-white/90">
+                {withCharacterIcons(meeting.title)}
+              </p>
+              <p className="font-galmuri11 text-[19px] font-black text-white mt-4">{dayText}</p>
               <p
                 data-testid="confirmed-time"
-                className="text-[24px] font-black tracking-[-1px] text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.15)]"
+                className="font-galmuri11 text-[76px] font-black tracking-[-3px] leading-none text-white"
               >
-                {timeText}
+                {hhmm(confirmedDate.getHours())}
+              </p>
+              <p className="text-[13px] font-bold text-white/80 mt-1.5">
+                ~{hhmm(confirmedDate.getHours() + meeting.duration_slots)} · {meeting.duration_slots}시간
+                · 모두가 딱 맞는 시간
               </p>
               {meeting.location && (
                 <p
                   data-testid="confirmed-location"
-                  className="flex items-center gap-1.5 text-[14px] font-bold text-white/90"
+                  className="flex items-center gap-1.5 text-[14px] font-bold text-white/90 mt-1"
                 >
                   <PinIcon />
                   {meeting.location}
@@ -569,7 +570,7 @@ export function MeetingPage() {
             </div>
           </Enter>
 
-          <Enter delay={0.08} className="flex flex-col gap-3 mt-4">
+          <Enter delay={0.08} className="flex flex-col gap-3 mt-8">
             <motion.a
               data-testid="google-calendar"
               href={googleCalendarUrl(ev)}
@@ -577,7 +578,7 @@ export function MeetingPage() {
               rel="noreferrer"
               whileTap={press}
               transition={pressSpring}
-              className="w-full rounded-field bg-primary text-white py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full rounded-full bg-white text-confirm py-3.5 font-galmuri11 text-[15px] font-black flex items-center justify-center gap-2 cursor-pointer"
             >
               <CalendarIcon />
               캘린더에 일정 추가
@@ -590,7 +591,7 @@ export function MeetingPage() {
                 onClick={() => void copyLink()}
                 whileTap={press}
                 transition={pressSpring}
-                className="flex-1 rounded-field border border-line bg-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 rounded-full border-2 border-white/70 bg-transparent text-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <LinkIcon />
                 {copied ? '복사됨!' : '링크 복사'}
@@ -603,7 +604,7 @@ export function MeetingPage() {
                 }
                 whileTap={press}
                 transition={pressSpring}
-                className="flex-1 rounded-field border border-line bg-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 rounded-full border-2 border-white/70 bg-transparent text-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ImageIcon />
                 이미지 저장
@@ -618,7 +619,7 @@ export function MeetingPage() {
               onClick={() => downloadIcs(ev)}
               whileTap={press}
               transition={pressSpring}
-              className="mt-4 mx-auto flex items-center gap-1.5 text-[12px] font-bold text-ink-muted/60 cursor-pointer"
+              className="mt-4 mx-auto flex items-center gap-1.5 text-[12px] font-bold text-white/60 cursor-pointer"
             >
               <OtherCalendarIcon />
               다른 캘린더 (.ics)
@@ -632,13 +633,13 @@ export function MeetingPage() {
               onClick={() => void unconfirm()}
               whileTap={press}
               transition={pressSpring}
-              className="mt-6 mx-auto flex items-center gap-1.5 text-[13px] font-black text-ink-muted/50 cursor-pointer"
+              className="mt-6 mx-auto flex items-center gap-1.5 text-[13px] font-black text-white/60 cursor-pointer"
             >
               <RestartIcon />
               조율 다시 시작하기
             </motion.button>
           )}
-          <Footer />
+          <Footer dark />
         </div>
       </div>
     )
@@ -662,9 +663,19 @@ export function MeetingPage() {
       <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
         <Enter>
           <header className="mb-4 px-0.5">
-            <h1 data-testid="meeting-title" className="text-[22.5px] font-black tracking-[-1.1px]">
-              {withCharacterIcons(meeting?.title ?? '')}
-            </h1>
+            <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
+              <h1 data-testid="meeting-title" className="font-galmuri11 text-[22px] font-black tracking-[-1px]">
+                {withCharacterIcons(meeting?.title ?? '')}
+              </h1>
+              {/* 참여자 전원의 캐릭터가 제목 옆에 늘어선다 — "이 멤버들의 회의"라는 소속감 */}
+              {rows.length > 0 && (
+                <span className="flex items-center gap-0.5">
+                  {rows.map((r) => (
+                    <CharacterIcon key={r.id} code={r.character} size={16} />
+                  ))}
+                </span>
+              )}
+            </div>
             <p className="text-[11.5px] text-ink-muted mt-1">
               {range?.start} ~ {range?.end} ·{' '}
               {meeting ? `${hhmm(meeting.hour_start)}~${hhmm(meeting.hour_end)}` : ''} ·{' '}
@@ -849,17 +860,26 @@ export function MeetingPage() {
 
           <div className="mt-6 mb-2.5 space-y-1.5">
             {pendingRows.length > 0 && (
-              <div className="flex items-center gap-2 bg-soft-bg/60 rounded-field px-3 py-2">
+              <div className="flex items-center gap-2 bg-surface border-2 border-line rounded-full px-3.5 py-2">
                 <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={22} />
-                <p className="text-[12.5px] font-bold text-soft-ink">
-                  {pendingRows.length === 1
-                    ? `모두가 ${pendingRows[0].name}님만 기다리고 있어요!`
-                    : `아직 ${pendingRows.length}명의 동료들이 눈치 보는 중 👀`}
+                <p className="text-[12.5px] font-bold text-ink">
+                  {pendingRows.length === 1 ? (
+                    <>
+                      모두가 <b className="font-black text-accent">{pendingRows[0].name}</b>님만 기다리고
+                      있어요!
+                    </>
+                  ) : (
+                    <>
+                      아직 <b className="font-black text-accent">{pendingRows.length}명</b>의 동료들이 눈치
+                      보는 중 👀
+                    </>
+                  )}
                 </p>
               </div>
             )}
             <p className="font-galmuri11 text-[13px] font-bold text-ink-muted px-0.5">
-              내 이름을 누르고, 되는 날만 콕 집어 모두를 구원해 주세요! 애매하면 주황으로!
+              내 이름을 누르고, 되는 날만 콕 집어 모두를 구원해 주세요! 애매하면{' '}
+              <b className="font-black text-accent">주황</b>으로!
             </p>
           </div>
           <PersonTabs
@@ -889,7 +909,7 @@ export function MeetingPage() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ ...spring, delay: 0.05 }}
-                    className="mx-auto w-12 h-12 rounded-full bg-confirm flex items-center justify-center"
+                    className="mx-auto w-12 h-12 rounded-full bg-confirm text-white flex items-center justify-center"
                   >
                     <CheckIcon size={22} />
                   </motion.div>
@@ -909,11 +929,21 @@ export function MeetingPage() {
                   >
                     {pendingRows.length > 0 && <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={20} />}
                     <span className="text-[12.5px] font-bold text-ink-muted">
-                      {pendingRows.length > 0
-                        ? pendingRows.length === 1
-                          ? `${pendingRows[0].name}님 입력만 기다리면 돼요!`
-                          : `아직 ${pendingRows.length}명이 고민 중이에요`
-                        : '모두 입력을 마쳤어요! 위에서 추천 시간을 확인해보세요.'}
+                      {pendingRows.length > 0 ? (
+                        pendingRows.length === 1 ? (
+                          <>
+                            <b className="font-black text-accent">{pendingRows[0].name}</b>님 입력만
+                            기다리면 돼요!
+                          </>
+                        ) : (
+                          <>
+                            아직 <b className="font-black text-accent">{pendingRows.length}명</b>이 고민
+                            중이에요
+                          </>
+                        )
+                      ) : (
+                        '모두 입력을 마쳤어요! 위에서 추천 시간을 확인해보세요.'
+                      )}
                     </span>
                   </motion.div>
                   <motion.button
@@ -983,8 +1013,10 @@ export function MeetingPage() {
         </Enter>
 
         <div className="sticky bottom-0 -mx-[22px] px-[22px] pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
+          {/* 조율 단계의 CTA는 주황 — 아직 미정인 단계라는 색 의미. 저장이 끝나면 파랑으로 */}
           <Button
             data-testid="save-availability"
+            variant={saveState === 'saved' ? 'primary' : 'accent'}
             onClick={() => void save()}
             disabled={saveState === 'saving'}
             breathe={saveState === 'idle'}

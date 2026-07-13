@@ -1,9 +1,10 @@
-// 상단 3단계 탭 — 정보 / 조율 / 확정. 현재 단계는 흰 알약 배경.
+// 상단 3단계 표시 — 시작 / 조율 / 확정. 현재 단계만 주황 아웃라인 알약,
+// 나머지는 옅은 텍스트. 좌우 끝에 뒤로/앞으로 화살표가 같은 줄에 놓인다.
 
 import { motion } from 'motion/react'
 import { press, pressSpring, riseIn, spring } from '../lib/motion'
 
-const STEPS = ['정보', '조율', '확정'] as const
+const STEPS = ['시작', '조율', '확정'] as const
 
 function BackArrowIcon() {
   return (
@@ -45,6 +46,8 @@ interface Props {
   onForward?: () => void
   /** true면 앞으로 가기 버튼을 흐리게 비활성 표시(예: 아직 확정 전) */
   forwardDisabled?: boolean
+  /** 확정 화면(파란 배경) 위에 올릴 때 — 흰색 계열로 전환 */
+  dark?: boolean
 }
 
 export function StepTabs({
@@ -54,35 +57,48 @@ export function StepTabs({
   onBack,
   onForward,
   forwardDisabled = false,
+  dark = false,
 }: Props) {
+  const arrowCls = dark
+    ? 'text-white/80 border-white/40'
+    : 'text-ink-muted border-line'
   return (
-    <div className="sticky top-0 z-10 bg-app/80 backdrop-blur px-[22px] py-[15px]">
-      <div className="flex items-center gap-2">
-        {onBack && (
-          <motion.button
-            type="button"
-            data-testid="back-button"
-            aria-label="뒤로"
-            onClick={onBack}
-            initial={riseIn.initial}
-            animate={riseIn.animate}
-            transition={spring}
-            whileTap={press}
-            className="flex-none w-9 h-9 rounded-full bg-surface-sub/30 border-2 border-line text-ink-muted flex items-center justify-center cursor-pointer"
-          >
-            <BackArrowIcon />
-          </motion.button>
-        )}
-        <div
-          role="tablist"
-          aria-label="진행 단계"
-          className="flex-1 flex p-[8px] rounded-[30px] bg-surface-sub/30 border border-line/50"
-        >
+    <div
+      className={`sticky top-0 z-10 backdrop-blur px-[22px] py-[15px] ${
+        dark ? 'bg-confirm/80' : 'bg-app/80'
+      }`}
+    >
+      <div className="flex items-center">
+        {/* 화살표 없는 화면에서도 라벨 위치가 흔들리지 않게 자리 자체는 항상 확보한다 */}
+        <div className="flex-none w-9 h-9">
+          {onBack && (
+            <motion.button
+              type="button"
+              data-testid="back-button"
+              aria-label="뒤로"
+              onClick={onBack}
+              initial={riseIn.initial}
+              animate={riseIn.animate}
+              transition={spring}
+              whileTap={press}
+              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer ${arrowCls}`}
+            >
+              <BackArrowIcon />
+            </motion.button>
+          )}
+        </div>
+        <div role="tablist" aria-label="진행 단계" className="flex-1 flex items-center justify-around">
           {STEPS.map((label, i) => {
             const active = i === current
             const canClick = !!onStepClick && !!clickable[i] && !active
-            const cls = `flex-1 py-2.5 rounded-[22px] font-galmuri9 text-[13px] font-black text-center ${
-              active ? 'bg-surface border-2 border-line shadow-pill text-ink' : 'text-ink-muted/60'
+            const cls = `px-4 py-1.5 rounded-full font-galmuri9 text-[13px] font-black text-center transition-colors duration-[120ms] motion-reduce:transition-none ${
+              active
+                ? dark
+                  ? 'border-2 border-white text-white'
+                  : 'border-2 border-accent text-accent bg-surface/60'
+                : dark
+                  ? 'text-white/50'
+                  : 'text-ink-muted/50'
             }`
             return canClick ? (
               <motion.button
@@ -105,24 +121,30 @@ export function StepTabs({
             )
           })}
         </div>
-        {onForward && (
-          <motion.button
-            type="button"
-            data-testid="forward-button"
-            aria-label="앞으로"
-            aria-disabled={forwardDisabled}
-            onClick={forwardDisabled ? undefined : onForward}
-            initial={riseIn.initial}
-            animate={riseIn.animate}
-            transition={spring}
-            whileTap={forwardDisabled ? undefined : press}
-            className={`flex-none w-9 h-9 rounded-full bg-surface-sub/30 border-2 border-line flex items-center justify-center ${
-              forwardDisabled ? 'text-ink-muted/30 cursor-not-allowed' : 'text-ink-muted cursor-pointer'
-            }`}
-          >
-            <ForwardArrowIcon />
-          </motion.button>
-        )}
+        <div className="flex-none w-9 h-9">
+          {onForward && (
+            <motion.button
+              type="button"
+              data-testid="forward-button"
+              aria-label="앞으로"
+              aria-disabled={forwardDisabled}
+              onClick={forwardDisabled ? undefined : onForward}
+              initial={riseIn.initial}
+              animate={riseIn.animate}
+              transition={spring}
+              whileTap={forwardDisabled ? undefined : press}
+              className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                forwardDisabled
+                  ? dark
+                    ? 'text-white/30 cursor-not-allowed'
+                    : 'text-ink-muted/30 cursor-not-allowed'
+                  : `cursor-pointer ${arrowCls}`
+              }`}
+            >
+              <ForwardArrowIcon />
+            </motion.button>
+          )}
+        </div>
       </div>
     </div>
   )
