@@ -720,11 +720,12 @@ export function MeetingPage() {
               <h1 data-testid="meeting-title" className="font-galmuri11 text-[22px] font-black tracking-[-1px]">
                 {withCharacterIcons(meeting?.title ?? '')}
               </h1>
-              {/* 참여자 전원의 캐릭터가 제목 옆에 늘어선다 — "이 멤버들의 회의"라는 소속감 */}
+              {/* 참여자 전원의 캐릭터가 제목 옆에 늘어선다 — "이 멤버들의 회의"라는 소속감.
+                  제목 타이포(22px)와 눈높이가 맞도록 아이콘도 같은 크기로 */}
               {rows.length > 0 && (
-                <span className="flex items-center gap-0.5">
+                <span className="flex items-center gap-1">
                   {rows.map((r) => (
-                    <CharacterIcon key={r.id} code={r.character} size={18} />
+                    <CharacterIcon key={r.id} code={r.character} size={22} />
                   ))}
                 </span>
               )}
@@ -734,7 +735,10 @@ export function MeetingPage() {
               {meeting ? `${hhmm(meeting.hour_start)}~${hhmm(meeting.hour_end)}` : ''} ·{' '}
               {meeting?.duration_slots}시간 · {rows.length}명
               {meeting?.deadline &&
-                ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
+                (() => {
+                  const d = new Date(meeting.deadline)
+                  return ` · 마감 ${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS_KO[d.getDay()]}) ${hhmm(d.getHours())}`
+                })()}
             </p>
             {meeting?.location && (
               <p data-testid="meeting-location" className="text-[11.5px] font-bold text-ink-muted mt-0.5">

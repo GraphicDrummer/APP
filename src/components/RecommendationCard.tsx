@@ -129,7 +129,7 @@ export function RecommendationCard({
   const confirmedDate = confirmedSlot ? new Date(confirmedSlot) : null
 
   return (
-    <motion.div layout transition={spring} data-testid="rec-card" aria-live="polite" className="overflow-hidden rounded-field">
+    <motion.div layout transition={spring} data-testid="rec-card" aria-live="polite" className="overflow-hidden rounded-card">
       <AnimatePresence mode="popLayout" initial={false}>
         {state === 'confirmed' && confirmedDate ? (
           <motion.div key="confirmed" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
@@ -167,19 +167,14 @@ export function RecommendationCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="bg-white border border-line rounded-field p-5"
+            className="bg-white border border-line rounded-card p-5"
           >
-            <div className="flex items-center gap-2">
-              <span className="w-[27px] h-[27px] rounded-full bg-danger/10 text-danger text-[13px] font-black flex items-center justify-center">
-                ⊘
-              </span>
-              <p className="text-[11px] font-black tracking-[2.2px] uppercase text-danger">
-                🚨 비상! 완벽한 날이 없습니다.
-              </p>
-            </div>
+            <p className="font-galmuri9 text-[12px] font-black tracking-[1px] text-danger">
+              🚨 비상! 완벽한 날이 없습니다.
+            </p>
             {/* 어떻게 하면 되는지가 이 카드 본문에 들어간다 — 화면 여기저기 흩어져
                 있던 설명을 한 곳으로 모아 텍스트 밀도를 낮췄다 */}
-            <p className="text-[13px] font-bold text-ink-muted mt-3.5 leading-[1.7]">
+            <p className="text-[13px] font-bold text-ink-muted mt-2.5 leading-[1.7]">
               {guide.split('주황')[0]}
               {guide.includes('주황') && (
                 <>
@@ -188,42 +183,49 @@ export function RecommendationCard({
                 </>
               )}
             </p>
+            {/* 차선책 — 헤어라인으로 위 안내와 분리하고, 옵션은 시간(픽셀 타이포)이
+                주인공, 양보 비용은 오른쪽 주황 칩으로 위계를 정리했다 */}
             {options.length > 0 && (
-              <p className="text-[12.5px] font-black text-ink mt-3">차선책을 확인해 보세요!</p>
+              <>
+                <div className="h-px bg-line/15 my-4" />
+                <p className="text-[12.5px] font-black text-ink">차선책을 확인해 보세요!</p>
+                <div className="mt-2.5 flex flex-col gap-2">
+                  {options.map(({ label, w, cost }, i) => (
+                    <Rise
+                      key={key(w.d, w.h)}
+                      index={i}
+                      data-testid={i === 0 && R.l1 ? 'ladder-soft' : 'ladder-drop'}
+                      className="flex items-center justify-between gap-3 rounded-field border border-line bg-surface p-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-galmuri9 text-[10px] font-black tracking-[0.5px] uppercase text-ink-muted/70">
+                          OPTION {i + 1} · {label}
+                        </p>
+                        <p className="font-galmuri11 text-[19px] font-black tracking-[-0.5px] mt-1">
+                          {DAYS[w.d]}요일 {hhmm(w.h)}
+                        </p>
+                      </div>
+                      <span className="flex-none rounded-full bg-soft-bg border border-soft/50 px-2.5 py-1 text-[10.5px] font-bold text-soft-ink whitespace-nowrap">
+                        {cost}
+                      </span>
+                    </Rise>
+                  ))}
+                </div>
+              </>
             )}
-            <div className="mt-3 flex flex-col gap-2.5">
-              {options.map(({ label, w, cost }, i) => (
-                <Rise
-                  key={key(w.d, w.h)}
-                  index={i}
-                  data-testid={i === 0 && R.l1 ? 'ladder-soft' : 'ladder-drop'}
-                  className="bg-surface-sub/50 border border-line/50 rounded-field p-4"
-                >
-                  <p className="text-[10px] font-black tracking-[0.5px] uppercase text-ink-muted">
-                    OPTION {i + 1}. {label}
-                  </p>
-                  <p className="mt-1.5">
-                    <span className="text-[17px] font-black">
-                      {DAYS[w.d]}요일 {hhmm(w.h)}
-                    </span>{' '}
-                    <span className="text-[11px] font-bold text-ink-muted">({cost})</span>
-                  </p>
-                </Rise>
-              ))}
-              {R.bottleneck && (
-                <Rise
-                  index={options.length}
-                  data-testid="bottleneck"
-                  className="flex items-start gap-2 bg-soft-bg/50 border border-soft rounded-field p-4"
-                >
-                  <CharacterIcon data-testid="bottleneck-character" code={bottleneckCharacter} size={24} />
-                  <p className="text-[11px] font-bold text-soft-ink leading-[1.6]">
-                    <b className="font-black text-accent">{R.bottleneck}</b>님만 시간을 내주시면 가능한
-                    시간이 <b className="font-black text-primary">{R.bestGain}개</b> 더 생긴다는 건 절대 비밀입니다...! 🤫
-                  </p>
-                </Rise>
-              )}
-            </div>
+            {R.bottleneck && (
+              <Rise
+                index={options.length}
+                data-testid="bottleneck"
+                className="mt-2 flex items-center gap-2.5 rounded-field bg-soft-bg/50 border border-soft/50 p-3.5"
+              >
+                <CharacterIcon data-testid="bottleneck-character" code={bottleneckCharacter} size={28} />
+                <p className="text-[11.5px] font-bold text-soft-ink leading-[1.6]">
+                  <b className="font-black text-accent">{R.bottleneck}</b>님만 시간을 내주시면 가능한
+                  시간이 <b className="font-black text-primary">{R.bestGain}개</b> 더 생긴다는 건 절대 비밀입니다...! 🤫
+                </p>
+              </Rise>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

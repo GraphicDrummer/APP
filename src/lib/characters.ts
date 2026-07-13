@@ -120,9 +120,9 @@ export function withCharacterIcons(text: string): ReactNode[] {
         srcSet: characterIconSrcSet(code),
         alt: '',
         'aria-hidden': true,
-        // 이모지(글자)보다 아이콘이 시각적으로 작아 보여서 1.3em으로 키운다 —
-        // 텍스트 크기에 비례해 균형이 맞도록 em 단위 유지
-        className: 'inline-block w-[1.3em] h-[1.3em] align-[-0.3em] object-contain mx-[1.5px]',
+        // 아이콘 원본은 여백이 있어 같은 박스의 이모지보다 작아 보인다 — 글자보다
+        // 확실히 크게(1.55em) 넣고, 베이스라인 아래로 내려 시각적 중앙을 맞춘다.
+        className: 'inline-block w-[1.55em] h-[1.55em] align-[-0.38em] object-contain mx-[2px]',
       }),
     )
   })

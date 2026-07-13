@@ -812,20 +812,40 @@ export function CreateMeetingPage() {
                     </motion.button>
                   </motion.span>
                 ))}
-                <input
-                  data-testid="new-person"
-                  className="min-w-[140px] flex-1 rounded-field border border-dashed border-line bg-transparent px-3 py-2 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      addPerson()
-                    }
-                  }}
-                  onBlur={addPerson}
-                  placeholder="+ 참여자 추가"
-                />
+                {/* 입력창 + 물리적 추가 버튼 — 엔터로도, 버튼으로도 추가할 수 있다.
+                    버튼은 이름이 입력됐을 때만 살아나 "지금 누르면 된다"를 알린다. */}
+                <span className="flex items-center gap-1.5 min-w-[170px] flex-1">
+                  <input
+                    data-testid="new-person"
+                    className="flex-1 min-w-0 rounded-field border border-dashed border-line bg-transparent px-3 py-2 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        addPerson()
+                      }
+                    }}
+                    onBlur={addPerson}
+                    placeholder="+ 참여자 추가"
+                  />
+                  <motion.button
+                    type="button"
+                    data-testid="add-person"
+                    aria-label="참여자 추가"
+                    onClick={addPerson}
+                    disabled={!newName.trim()}
+                    whileTap={newName.trim() ? press : undefined}
+                    transition={pressSpring}
+                    className={`flex-none h-[35px] px-3.5 rounded-full border border-line font-galmuri9 text-[12px] font-black transition-colors duration-[120ms] motion-reduce:transition-none ${
+                      newName.trim()
+                        ? 'bg-ink text-white cursor-pointer'
+                        : 'bg-surface-sub/40 text-ink-muted/40 cursor-not-allowed'
+                    }`}
+                  >
+                    추가
+                  </motion.button>
+                </span>
               </div>
             </div>
 
