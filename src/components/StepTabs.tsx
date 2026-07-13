@@ -8,11 +8,11 @@ const STEPS = ['시작', '조율', '확정'] as const
 
 function BackArrowIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M15 5 8 12l7 7"
         stroke="currentColor"
-        strokeWidth="2.2"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -22,11 +22,11 @@ function BackArrowIcon() {
 
 function ForwardArrowIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M9 5l7 7-7 7"
         stroke="currentColor"
-        strokeWidth="2.2"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -59,18 +59,16 @@ export function StepTabs({
   forwardDisabled = false,
   dark = false,
 }: Props) {
-  const arrowCls = dark
-    ? 'text-white/80 border-white/40'
-    : 'text-ink-muted border-line'
+  const arrowCls = dark ? 'text-white/70' : 'text-ink-muted/70'
   return (
     <div
-      className={`sticky top-0 z-10 backdrop-blur px-[22px] py-[15px] ${
+      className={`sticky top-0 z-10 backdrop-blur px-[22px] py-2 ${
         dark ? 'bg-confirm/80' : 'bg-app/80'
       }`}
     >
       <div className="flex items-center">
         {/* 화살표 없는 화면에서도 라벨 위치가 흔들리지 않게 자리 자체는 항상 확보한다 */}
-        <div className="flex-none w-9 h-9">
+        <div className="flex-none w-7 h-7">
           {onBack && (
             <motion.button
               type="button"
@@ -81,7 +79,7 @@ export function StepTabs({
               animate={riseIn.animate}
               transition={spring}
               whileTap={press}
-              className={`w-9 h-9 rounded-full flex items-center justify-center cursor-pointer ${arrowCls}`}
+              className={`w-7 h-7 rounded-full flex items-center justify-center cursor-pointer ${arrowCls}`}
             >
               <BackArrowIcon />
             </motion.button>
@@ -91,11 +89,11 @@ export function StepTabs({
           {STEPS.map((label, i) => {
             const active = i === current
             const canClick = !!onStepClick && !!clickable[i] && !active
-            const cls = `px-4 py-1.5 rounded-full font-galmuri9 text-[13px] font-black text-center transition-colors duration-[120ms] motion-reduce:transition-none ${
+            const cls = `px-3 py-[3px] rounded-full font-galmuri9 text-[11px] font-black text-center transition-colors duration-[120ms] motion-reduce:transition-none ${
               active
                 ? dark
-                  ? 'border-2 border-white text-white'
-                  : 'border-2 border-accent text-accent bg-surface/60'
+                  ? 'border border-white text-white'
+                  : 'border border-accent text-accent'
                 : dark
                   ? 'text-white/50'
                   : 'text-ink-muted/50'
@@ -121,7 +119,7 @@ export function StepTabs({
             )
           })}
         </div>
-        <div className="flex-none w-9 h-9">
+        <div className="flex-none w-7 h-7">
           {onForward && (
             <motion.button
               type="button"
@@ -133,7 +131,7 @@ export function StepTabs({
               animate={riseIn.animate}
               transition={spring}
               whileTap={forwardDisabled ? undefined : press}
-              className={`w-9 h-9 rounded-full flex items-center justify-center ${
+              className={`w-7 h-7 rounded-full flex items-center justify-center ${
                 forwardDisabled
                   ? dark
                     ? 'text-white/30 cursor-not-allowed'

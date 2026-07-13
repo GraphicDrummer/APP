@@ -116,7 +116,7 @@ function EditorPanel({ children }: { children: React.ReactNode }) {
       transition={spring}
       className="w-full overflow-x-visible overflow-y-hidden"
     >
-      <div className="mt-2 mb-1 rounded-card border-2 border-line bg-surface shadow-card p-4">{children}</div>
+      <div className="mt-2 mb-1 rounded-card border border-line bg-surface shadow-card p-4">{children}</div>
     </motion.div>
   )
 }
@@ -217,6 +217,21 @@ export function CreateMeetingPage() {
     { name: organizer.trim(), role: 'required', character: 'tiger' as ParticipantCharacter },
     ...people.filter((p) => p.name !== organizer.trim()),
   ]
+
+  // 점진 노출 — 처음엔 시원한 문장형 폼만 보여주고, 무언가 채우기 시작하면
+  // 주최자/참여자/장소와 CTA가 아래에서 펼쳐진다. 첫 화면의 압박을 줄이는 장치.
+  const started = !!(
+    title.trim() ||
+    dateStart ||
+    dateEnd ||
+    hoursTouched ||
+    durationTouched ||
+    (deadlineOpen && deadlineDate) ||
+    organizer.trim() ||
+    people.length > 0
+  )
+  // 필수값(제목·주최자·날짜)이 다 차야 CTA가 활성화된다
+  const formReady = !!(title.trim() && organizer.trim() && dateStart && dateEnd)
 
   const toggleRole = (i: number) => {
     setPeople((prev) =>
@@ -327,105 +342,125 @@ export function CreateMeetingPage() {
 
   if (link) {
     const path = new URL(link).pathname
-    const shortLink = link.replace(/^https?:\/\//, '')
-    const shortAdminLink = adminLink ? adminLink.replace(/^https?:\/\//, '') : ''
-    
+    const code = path.split('/').pop() ?? ''
+
+    // 참여/관리자 링크 카드 — 두 카드가 같은 골격(왼쪽 라벨+코드 / 오른쪽 버튼 2개)을
+    // 공유해 영역이 나란히 맞는다. 코드가 곧 링크(/m/코드)라 코드를 누르면 복사된다.
+    // 컴포넌트가 아니라 렌더 헬퍼 함수로 호출한다(리렌더마다 리마운트되는 걸 방지).
+    const linkCard = ({
+      label,
+      sub,
+      code: codeText,
+      copiedNow,
+      onCopy,
+      onKakao,
+      kakaoLabel,
+      kakaoTestId,
+      copyTestId,
+      codeTestId,
+    }: {
+      label: string
+      sub: string
+      code: string
+      copiedNow: boolean
+      onCopy: () => void
+      onKakao: () => void
+      kakaoLabel: string
+      kakaoTestId: string
+      copyTestId?: string
+      codeTestId?: string
+    }) => (
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <CardLabel>{label}</CardLabel>
+          <p className="text-[10.5px] font-bold text-ink-muted/60 mt-0.5">{sub}</p>
+          <motion.button
+            type="button"
+            data-testid={codeTestId}
+            onClick={onCopy}
+            whileTap={press}
+            transition={pressSpring}
+            className="font-galmuri11 text-[24px] font-black tracking-[0.5px] text-accent mt-1.5 cursor-pointer"
+          >
+            {copiedNow ? '복사됐어요!' : codeText}
+          </motion.button>
+        </div>
+        <div className="flex flex-col gap-1.5 flex-none w-[150px]">
+          <motion.button
+            type="button"
+            data-testid={kakaoTestId}
+            onClick={onKakao}
+            whileTap={press}
+            transition={pressSpring}
+            className="h-9 rounded-full border border-line bg-[#FEE500] text-[#191919] text-[11.5px] font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <KakaoIcon />
+            {kakaoLabel}
+          </motion.button>
+          <motion.button
+            type="button"
+            data-testid={copyTestId}
+            onClick={onCopy}
+            whileTap={press}
+            transition={pressSpring}
+            className="h-9 rounded-full border border-line bg-white text-ink text-[11.5px] font-extrabold flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <CopyIcon stroke="#303030" />
+            링크 복사
+          </motion.button>
+        </div>
+      </div>
+    )
+
     return (
       <div className="min-h-screen bg-app text-ink">
         <div className="max-w-[430px] mx-auto">
           <StepTabs current={0} onForward={() => void navigate(path)} />
         </div>
-        <div className="max-w-[430px] mx-auto px-[22px] pt-6 pb-4">
+        <div className="max-w-[430px] mx-auto px-[22px] pt-5 pb-4">
           <Enter className="text-center">
             <motion.p
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ ...spring, delay: 0.05 }}
-              className="inline-block rounded-full bg-accent border-2 border-line text-white font-galmuri9 text-[13px] font-black px-4 py-1.5"
+              className="inline-block rounded-full bg-accent border border-line text-white font-galmuri9 text-[11px] font-black px-3.5 py-1"
             >
               회의가 만들어졌어요
             </motion.p>
-            <h1 className="font-galmuri11 text-[24px] font-black tracking-[-1px] mt-3">
+            <h1 className="font-galmuri11 text-[21px] font-black tracking-[-0.8px] mt-2.5">
               {withCharacterIcons(title)}
             </h1>
-            <p className="text-[13px] text-ink-muted mt-1">
+            <p className="text-[12px] text-ink-muted mt-1">
               {dateStart} ~ {dateEnd} · {durationSlots}시간 · {roster().length}명
             </p>
           </Enter>
 
-          <Enter delay={0.08} className={`${cardCls} p-5 mt-7`}>
-            <CardLabel>참여 링크 (단톡방 공유용)</CardLabel>
-            {/* 코드가 곧 링크(/m/코드) — 픽셀 타이포로 크게 보여주는 게 이 화면의 히어로 */}
-            <p className="font-galmuri11 text-[30px] font-black tracking-[1px] text-accent mt-2">
-              {new URL(link).pathname.split('/').pop()}
-            </p>
-            <div className="mt-2 bg-surface-sub/50 rounded-full px-3 py-2.5 overflow-hidden">
-              <p data-testid="share-link" className="text-[13px] font-bold truncate">
-                {shortLink}
-              </p>
-            </div>
-
-            <motion.button
-              type="button"
-              data-testid="share-link-kakao"
-              onClick={() => void shareLink()}
-              whileTap={press}
-              transition={pressSpring}
-              className="w-full mt-4 rounded-full border-2 border-line bg-[#FEE500] text-[#191919] py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <KakaoIcon />
-              카카오톡으로 공유하기
-            </motion.button>
-
-            <Button
-              variant="ghost"
-              onClick={() => void copyLink()}
-              className="w-full mt-2 !py-2.5 !text-[13px] flex items-center justify-center gap-2"
-            >
-              <CopyIcon stroke="#303030" />
-              {copied ? '복사됐어요!' : '링크 복사'}
-            </Button>
+          <Enter delay={0.08} className={`${cardCls} p-4 mt-6`}>
+            {linkCard({
+              label: '참여 링크',
+              sub: '단톡방 공유용 · 코드를 누르면 복사돼요',
+              code,
+              copiedNow: copied,
+              onCopy: () => void copyLink(),
+              onKakao: () => void shareLink(),
+              kakaoLabel: '카카오톡 공유하기',
+              kakaoTestId: 'share-link-kakao',
+              codeTestId: 'share-link',
+            })}
           </Enter>
 
-          <Enter delay={0.10} className={`${cardCls} p-5 mt-4 border-2 border-primary/20`}>
-            <CardLabel>👑 관리자 링크 (주최자 보관용)</CardLabel>
-            <p className="text-[11px] text-ink-muted/80 mt-1">이 링크로 접속하면 별도의 로그인 없이 회의 수정 및 응답 마감이 가능해요!</p>
-            <div className="mt-3 bg-primary/5 rounded-full px-3 py-2.5 overflow-hidden border border-primary/10">
-              <p className="text-[13px] font-bold text-primary truncate">
-                {shortAdminLink}
-              </p>
-            </div>
-
-            <div className="mt-3 flex items-start gap-2 rounded-field bg-soft-bg/60 px-3 py-2.5">
-              <span className="text-[15px] leading-none mt-0.5" aria-hidden>⚠️</span>
-              <p className="text-[12px] font-bold text-soft-ink leading-snug">
-                이 링크를 잃어버리면 다시 찾을 수 없어요.
-                <br />
-                지금 카카오톡으로 나에게 보내두세요!
-              </p>
-            </div>
-
-            <motion.button
-              type="button"
-              data-testid="share-admin-kakao"
-              onClick={() => void shareAdminLink()}
-              whileTap={press}
-              transition={pressSpring}
-              className="w-full mt-3 rounded-full border-2 border-line bg-[#FEE500] text-[#191919] py-3.5 text-[15px] font-extrabold flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <KakaoIcon />
-              카카오톡으로 나에게 보내기
-            </motion.button>
-
-            <Button
-              variant="ghost"
-              data-testid="copy-admin-link"
-              onClick={() => void copyAdminLink()}
-              className="w-full mt-2 !py-2.5 !text-[13px] flex items-center justify-center gap-2"
-            >
-              <CopyIcon stroke="#303030" />
-              {adminCopied ? '복사됐어요!' : '링크 복사'}
-            </Button>
+          <Enter delay={0.10} className={`${cardCls} p-4 mt-3`}>
+            {linkCard({
+              label: '관리자 링크',
+              sub: '주최자 보관용 · 잃어버리면 다시 찾을 수 없어요',
+              code,
+              copiedNow: adminCopied,
+              onCopy: () => void copyAdminLink(),
+              onKakao: () => void shareAdminLink(),
+              kakaoLabel: '나에게 보내기',
+              kakaoTestId: 'share-admin-kakao',
+              copyTestId: 'copy-admin-link',
+            })}
           </Enter>
 
           <Enter delay={0.12} className={`${cardCls} p-5 mt-4`}>
@@ -484,18 +519,11 @@ export function CreateMeetingPage() {
       <div className="max-w-[430px] mx-auto">
         <StepTabs current={0} />
       </div>
-      <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
-        {/* 앱 첫 진입 로고 — 순수 CSS 등장 애니메이션(index.css의 animate-logo-in), motion 불필요 */}
-        <p
-          className="animate-logo-in pl-0.5 font-galmuri9 text-[13px] font-black tracking-[0.5px] text-ink-muted/70"
-          aria-hidden
-        >
-          딱<span className="text-primary">.</span>
-        </p>
+      <div className="max-w-[430px] mx-auto px-[22px] pt-6 pb-4">
         <Enter>
           {/* 위계: 작은 아이브로 한 줄 → 문장형 폼이 화면의 주인공(히어로 타이포) */}
-          <header className="pt-3 pb-6">
-            <h1 className="font-galmuri11 text-[14px] font-bold text-ink">
+          <header className="pb-7">
+            <h1 className="animate-logo-in font-galmuri9 text-[12px] font-bold text-ink-muted">
               새로운 회의를 시작해요<span className="text-primary">.</span>
             </h1>
           </header>
@@ -503,8 +531,8 @@ export function CreateMeetingPage() {
 
         <Enter delay={0.08}>
           {/* 문장형 폼 — 데이터 절 단위로 줄을 나눈다. 각 [ ]는 밑줄 친 탭 영역,
-              누르면 그 줄 아래로 입력 UI가 펼쳐진다 */}
-          <div className="font-galmuri11 text-[21px] font-bold leading-[1.6] tracking-[-0.4px] space-y-2.5">
+              누르면 그 줄 아래로 입력 UI가 펼쳐진다. 크고 시원한 히어로 타이포. */}
+          <div className="font-galmuri11 text-[24px] font-bold leading-[1.65] tracking-[-0.5px] space-y-3.5">
             {/* 새로운 회의, */}
             <div className="flex flex-wrap items-baseline gap-x-1 gap-y-2">
               <Slot testId="slot-title" filled={!!title.trim()} active={activeSlot === 'title'} onToggle={() => toggleSlot('title')} hintIndex={0} hintActive={hintActive}>
@@ -611,7 +639,7 @@ export function CreateMeetingPage() {
                           }}
                           whileTap={press}
                           transition={pressSpring}
-                          className={`flex-1 border-2 border-line rounded-full py-1.5 text-[12px] font-bold text-center cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${
+                          className={`flex-1 border border-line rounded-full py-1.5 text-[12px] font-bold text-center cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${
                             durationTouched && n === durationSlots
                               ? 'bg-primary text-white'
                               : 'bg-white text-ink-muted'
@@ -710,12 +738,15 @@ export function CreateMeetingPage() {
               )}
             </AnimatePresence>
           </div>
-          <p className="font-galmuri9 text-[12px] font-bold text-ink-muted/60 mt-4">
+          <p className="font-galmuri9 text-[12px] font-bold text-ink-muted/60 mt-5">
             밑줄 친 곳을 눌러 채워주세요.
           </p>
         </Enter>
 
-        <Enter delay={0.12}>
+        {/* 채우기 시작해야 나머지 입력(주최자/참여자/장소)과 CTA가 펼쳐진다 */}
+        <AnimatePresence initial={false}>
+        {started && (
+        <motion.div key="rest-of-form" {...collapse} transition={spring} className="overflow-hidden">
           <div className="mt-8 space-y-5">
             <Field label="주최자">
               <div className="flex items-center gap-2">
@@ -723,7 +754,7 @@ export function CreateMeetingPage() {
                 <span
                   data-testid="organizer-character"
                   aria-hidden
-                  className="flex-none w-9 h-9 rounded-full bg-surface border-2 border-line flex items-center justify-center"
+                  className="flex-none w-9 h-9 rounded-full bg-surface border border-line flex items-center justify-center"
                 >
                   <CharacterIcon code="tiger" size={22} />
                 </span>
@@ -754,7 +785,7 @@ export function CreateMeetingPage() {
                   >
                     <CharacterIcon code="tiger" size={24} />
                     <span className="text-[13px] font-bold">{organizer.trim()}</span>
-                    <span className="rounded-full border-2 border-line bg-accent text-white px-2 py-0.5 font-galmuri9 text-[10px] font-black whitespace-nowrap">
+                    <span className="rounded-full border border-line bg-accent text-white px-2 py-0.5 font-galmuri9 text-[10px] font-black whitespace-nowrap">
                       주최자
                     </span>
                   </motion.span>
@@ -846,22 +877,36 @@ export function CreateMeetingPage() {
               {error}
             </p>
           )}
-        </Enter>
+        </motion.div>
+        )}
+        </AnimatePresence>
 
-        <div className="sticky bottom-0 -mx-[22px] px-[22px] pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent">
-          {/* 필수값이 다 차기 전엔 회색 — 채워지는 순간 파랑으로 바뀌며 "이제 만들 수 있음"을
-              알린다. 회색 상태에서도 눌러서 뭐가 부족한지 확인할 수는 있다. */}
-          <Button
-            data-testid="create-meeting"
-            variant={title.trim() && organizer.trim() && dateStart && dateEnd ? 'primary' : 'muted'}
-            onClick={() => void submit()}
-            disabled={saving}
-            breathe={hintActive && !saving}
-            className="w-full"
+        {/* CTA는 sticky 유지를 위해 접힘 컨테이너(overflow-hidden) 밖에서 따로 페이드 인 */}
+        <AnimatePresence initial={false}>
+        {started && (
+          <motion.div
+            key="cta"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={spring}
+            className="sticky bottom-0 -mx-[22px] px-[22px] pt-3 pb-3 bg-gradient-to-t from-app via-app/95 to-transparent"
           >
-            {saving ? '만드는 중…' : '회의 생성하기'}
-          </Button>
-        </div>
+            {/* 필수값(제목·주최자·날짜)이 다 차기 전엔 회색 비활성 — 채워지는 순간
+                파랑으로 살아나며 한 번 팝(breathe)해 "이제 만들 수 있음"을 알린다 */}
+            <Button
+              data-testid="create-meeting"
+              variant={formReady ? 'primary' : 'muted'}
+              onClick={() => void submit()}
+              disabled={saving || !formReady}
+              breathe={formReady && !saving}
+              className="w-full"
+            >
+              {saving ? '만드는 중…' : '회의 생성하기'}
+            </Button>
+          </motion.div>
+        )}
+        </AnimatePresence>
 
         <Footer />
       </div>

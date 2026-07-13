@@ -3,6 +3,8 @@ import { motion, MotionConfig, useAnimationControls } from 'motion/react'
 import { DAYS, HOURS, key, type CellState, type Person } from '../engine'
 import { hhmm } from '../lib/slots'
 import { press, pressSpring } from '../lib/motion'
+import { dragScrollCls, useDragScroll } from '../lib/dragScroll'
+import { CharacterIcon } from './CharacterIcon'
 
 type DisplayState = CellState | 'blocked'
 
@@ -34,6 +36,8 @@ interface Props {
   cascade?: CascadeSignal | null
   /** 그리드 첫 진입 시 이 칸이 한 번 살짝 들썩였다가 돌아온다(입력 유도) */
   hintCell?: { d: number; h: number } | null
+  /** 지금 칠하는 사람의 캐릭터 코드 — 있으면 "OO님의 시간" 앞에 아이콘 표시 */
+  personCharacter?: string | null
 }
 
 // 개별 칸 — 헤더 일괄 변경 시 자기 순서(index)에 맞춰 살짝 커졌다 돌아오는 펄스를 재생한다.
@@ -95,7 +99,7 @@ function Cell({
       whileTap={press}
       transition={pressSpring}
       style={{ transitionDelay: `${Math.round(delay * 1000)}ms` }}
-      className={`block w-full h-[41px] rounded-[17px] border-2 border-line cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[state]}`}
+      className={`block w-full h-[42px] rounded-[14px] border border-line cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${CELL_STYLE[state]}`}
     />
   )
 
@@ -150,7 +154,7 @@ function HeaderCell({
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`w-full h-[30px] rounded-full border-2 border-line text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
+      className={`w-full h-[28px] rounded-full border border-line text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
     >
       {children}
     </motion.button>
@@ -193,10 +197,12 @@ export function AvailabilityGrid({
   onCycleHour,
   cascade = null,
   hintCell = null,
+  personCharacter = null,
 }: Props) {
   const cellState = (d: number, h: number): DisplayState => person.cells[key(d, h)] ?? 'blocked'
 
   const scrollRef = useRef<HTMLDivElement>(null)
+  const dragHandlers = useDragScroll(scrollRef)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(false)
 
@@ -222,21 +228,21 @@ export function AvailabilityGrid({
     <div>
       <div className="mb-3 px-0.5">
         <div className="flex items-center justify-between">
-          <h3 className="text-[15px] font-black tracking-[-0.4px]">
-            <span className="text-primary">{person.id}</span>님의 시간
+          <h3 className="flex items-center gap-1.5 text-[15px] font-black tracking-[-0.4px]">
+            <CharacterIcon code={personCharacter} size={20} />
+            <span>
+              <span className="text-primary">{person.id}</span>님의 시간
+            </span>
           </h3>
           <GridLegend />
         </div>
         {(onCycleDay || onCycleHour) && (
-          <p className="text-[10px] font-bold text-ink-muted mt-1">헤더 탭 → 행/열 일괄</p>
+          <p className="text-[10px] font-bold text-ink-muted/60 mt-1">헤더 탭 → 행/열 일괄</p>
         )}
       </div>
 
       <div className="relative">
-        <div
-          ref={scrollRef}
-          className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
+        <div ref={scrollRef} {...dragHandlers} className={dragScrollCls}>
           <table className="min-w-[340px] w-full table-fixed border-separate border-spacing-[4px]">
             <thead>
               <tr>

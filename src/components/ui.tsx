@@ -8,12 +8,12 @@ import { press, pressSpring, spring, screenIn } from '../lib/motion'
 
 // ---------- 공통 클래스 ----------
 
-/** 입력창/셀렉트 공통 — 흰 배경, 15px 라운드, 진한 픽셀 테두리 */
+/** 입력창/셀렉트 공통 — 흰 배경, 15px 라운드, 1px 헤어라인 테두리 */
 export const fieldCls =
-  'w-full rounded-field border-2 border-line bg-surface shadow-card px-4 py-3 font-galmuri11 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary'
+  'w-full rounded-field border border-line bg-surface shadow-card px-4 py-3 font-galmuri11 text-[13px] text-ink placeholder:text-ink/50 focus:outline-none focus:border-primary'
 
 /** 카드 표면 */
-export const cardCls = 'bg-surface border-2 border-line rounded-card shadow-card'
+export const cardCls = 'bg-surface border border-line rounded-card shadow-card'
 
 // ---------- 버튼 ----------
 
@@ -61,7 +61,7 @@ export function Button({ variant = 'primary', className = '', breathe = false, .
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`rounded-full border-2 border-line px-4 py-3.5 font-galmuri11 text-[17px] font-extrabold cursor-pointer disabled:opacity-50 ${BUTTON_VARIANT[variant]} ${className}`}
+      className={`rounded-full border border-line px-4 py-3.5 font-galmuri11 text-[16px] font-extrabold cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${BUTTON_VARIANT[variant]} ${className}`}
       {...rest}
     />
   )
@@ -170,7 +170,7 @@ export function RoleBadge({
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`rounded-full border-2 border-line px-2 py-0.5 font-galmuri9 text-[10px] font-black cursor-pointer ${
+      className={`rounded-full border border-line px-2 py-0.5 font-galmuri9 text-[10px] font-black cursor-pointer ${
         role === 'required' ? required : 'bg-surface-sub text-ink-muted'
       }`}
       {...rest}

@@ -591,7 +591,7 @@ export function MeetingPage() {
                 onClick={() => void copyLink()}
                 whileTap={press}
                 transition={pressSpring}
-                className="flex-1 rounded-full border-2 border-white/70 bg-transparent text-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 rounded-full border border-white/70 bg-transparent text-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <LinkIcon />
                 {copied ? '복사됨!' : '링크 복사'}
@@ -604,7 +604,7 @@ export function MeetingPage() {
                 }
                 whileTap={press}
                 transition={pressSpring}
-                className="flex-1 rounded-full border-2 border-white/70 bg-transparent text-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 rounded-full border border-white/70 bg-transparent text-white py-3 text-[13px] font-black flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ImageIcon />
                 이미지 저장
@@ -679,7 +679,7 @@ export function MeetingPage() {
             <p className="text-[11.5px] text-ink-muted mt-1">
               {range?.start} ~ {range?.end} ·{' '}
               {meeting ? `${hhmm(meeting.hour_start)}~${hhmm(meeting.hour_end)}` : ''} ·{' '}
-              {meeting?.duration_slots}시간
+              {meeting?.duration_slots}시간 · {rows.length}명
               {meeting?.deadline &&
                 ` · 마감 ${new Date(meeting.deadline).toLocaleString('ko-KR')}`}
             </p>
@@ -860,7 +860,7 @@ export function MeetingPage() {
 
           <div className="mt-6 mb-2.5 space-y-1.5">
             {pendingRows.length > 0 && (
-              <div className="flex items-center gap-2 bg-surface border-2 border-line rounded-full px-3.5 py-2">
+              <div className="flex items-center gap-2 bg-surface border border-line rounded-full px-3.5 py-2">
                 <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={22} />
                 <p className="text-[12.5px] font-bold text-ink">
                   {pendingRows.length === 1 ? (
@@ -993,6 +993,7 @@ export function MeetingPage() {
                   </AnimatePresence>
                   <AvailabilityGrid
                     person={people[selected]}
+                    personCharacter={rows[selected]?.character}
                     onCycleCell={cycleCell}
                     hours={hours}
                     onCycleDay={cycleDay}

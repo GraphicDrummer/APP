@@ -162,7 +162,7 @@ export function RecommendationCard({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="bg-white border-2 border-line rounded-field p-5"
+            className="bg-white border border-line rounded-field p-5"
           >
             <div className="flex items-center gap-2">
               <span className="w-[27px] h-[27px] rounded-full bg-danger/10 text-danger text-[13px] font-black flex items-center justify-center">

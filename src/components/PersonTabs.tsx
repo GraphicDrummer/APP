@@ -1,7 +1,8 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { motion, useAnimationControls } from 'motion/react'
 import type { Person } from '../engine'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
+import { dragScrollCls, useDragScroll } from '../lib/dragScroll'
 import { CharacterIcon, CharacterAvatarStack } from './CharacterIcon'
 
 /** PersonTabs 표시용 — engine의 Person에 캐릭터/제출 여부를 얹는다 */
@@ -74,6 +75,8 @@ function RoleTab({
 // 아직 제출 전인 참여자는(선택 중이 아니면) 흐리게 표시해 "누가 남았는지"를 드러낸다.
 export function PersonTabs({ people, selected, onSelect, onToggleRole, hintFirstRole = false }: Props) {
   const completed = people.filter((p) => p.submitted)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const dragHandlers = useDragScroll(scrollRef)
 
   return (
     <div>
@@ -83,7 +86,11 @@ export function PersonTabs({ people, selected, onSelect, onToggleRole, hintFirst
           <span className="text-[10.5px] font-bold text-ink-muted/70">{completed.length}명 완료</span>
         </div>
       )}
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-[22px] px-[22px]">
+      <div
+        ref={scrollRef}
+        {...dragHandlers}
+        className={`flex gap-2 pb-2 -mx-[22px] px-[22px] ${dragScrollCls}`}
+      >
         {people.map((p, i) => {
           const active = i === selected
           const dim = p.submitted === false && !active
