@@ -23,7 +23,8 @@ import { StepTabs } from '../components/StepTabs'
 import { Footer } from '../components/Footer'
 import { AnimatePresence, motion } from 'motion/react'
 import { press, pressSpring, riseIn, spring } from '../lib/motion'
-import { withCharacterIcons } from '../lib/characters'
+import { CHARACTER_EMOJI, withCharacterIcons, type ParticipantCharacter } from '../lib/characters'
+import { fillTemplate, pickOne, SAVED_WAIT_MANY, SAVED_WAIT_ONE, WAIT_MANY, WAIT_ONE } from '../lib/copy'
 import { Button, cardCls, Enter, Field, LabeledRow, Select, TextInput } from '../components/ui'
 import { AvailabilityGrid, type CascadeSignal } from '../components/AvailabilityGrid'
 import { ChipRow, HourRangePicker } from '../components/HourRangePicker'
@@ -171,7 +172,9 @@ export function MeetingPage() {
     }
   }
 
-  // 확정 완결 화면에 진입할 때 컨페티를 한 번 터뜨린다.
+  // 확정 완결 화면에 진입할 때 컨페티를 한 번 터뜨린다 — 기본 종이 조각에 더해
+  // 참여자 전원의 캐릭터 이모지가 함께 터진다(주최자 호랑이 포함). 확정은 이 앱의
+  // 유일한 히어로 모먼트라 여기서만 모션 예산을 아끼지 않는다.
   // effectiveView는 아래에서 파생 상태로 다시 계산되므로, 훅은 조건부 return보다
   // 앞에서 그 계산을 그대로 반복해 항상 같은 순서로 호출되게 한다.
   const confettiFiredFor = useRef<string | null>(null)
@@ -181,7 +184,44 @@ export function MeetingPage() {
     if (confettiFiredFor.current === meeting.confirmed_slot) return
     confettiFiredFor.current = meeting.confirmed_slot
     void confetti({ particleCount: 120, spread: 90, startVelocity: 45, origin: { y: 0.35 } })
+    try {
+      const emojis = [
+        ...new Set(
+          rows
+            .map((r) => CHARACTER_EMOJI[r.character as ParticipantCharacter])
+            .filter(Boolean),
+        ),
+      ].slice(0, 8)
+      const shapes = emojis.map((e) => confetti.shapeFromText({ text: e, scalar: 2.2 }))
+      if (shapes.length > 0) {
+        void confetti({
+          particleCount: Math.min(10 + rows.length * 5, 45),
+          spread: 110,
+          startVelocity: 38,
+          scalar: 2.2,
+          shapes,
+          origin: { y: 0.35 },
+        })
+      }
+    } catch {
+      // shapeFromText 미지원 브라우저 — 기본 컨페티만으로 충분하다
+    }
+  }, [view, meeting?.confirmed_slot, rows])
+
+  // 조율 ↔ 확정 화면 전환 방향 — 앞으로 갈 땐 오른쪽에서, 되돌아올 땐 왼쪽에서
+  // 콘텐츠가 미끄러져 들어와 "어디로 가고 있는지"가 시각적으로 읽히게 한다.
+  const lastViewRef = useRef<'adjust' | 'done'>('adjust')
+  useEffect(() => {
+    lastViewRef.current = (view ?? (meeting?.confirmed_slot ? 'done' : 'adjust')) as
+      | 'adjust'
+      | 'done'
   }, [view, meeting?.confirmed_slot])
+
+  // 화면이 떠 있는 동안 고정되는 랜덤 멘트 — 새로 열 때마다 조금씩 달라진다
+  const waitManyTpl = useMemo(() => pickOne(WAIT_MANY), [])
+  const waitOneTpl = useMemo(() => pickOne(WAIT_ONE), [])
+  const savedWaitManyTpl = useMemo(() => pickOne(SAVED_WAIT_MANY), [])
+  const savedWaitOneTpl = useMemo(() => pickOne(SAVED_WAIT_ONE), [])
 
   // admin_key는 anon이 테이블에서 직접 읽을 수 없으므로, "이 meeting 객체에
   // admin_key가 채워져 있다" = "verifyAdminKey 검증을 이미 통과했다"와 같은 뜻이다.
@@ -514,19 +554,19 @@ export function MeetingPage() {
       setTimeout(() => setCopied(false), 1500)
     }
     // 확정 화면은 화면 전체가 파랑으로 물든다 — "답이 정해졌다"를 색으로 선언.
-    // (색 의미 체계: 주황 = 미정, 파랑 = 확정)
+    // (색 의미 체계: 주황 = 미정, 파랑 = 확정. 회색으로 되돌리지 않는 이유:
+    // 상태색이 화면색이라는 문법이 이 앱의 가장 강한 표현이라, 확정 후에도 유지한다)
     return (
-      <div className="min-h-screen bg-confirm text-white">
+      <div key="done-view" className="min-h-screen bg-confirm text-white">
         {/* 확정 완결 화면 전용 일러스트 — 컨페티(캔버스, 화면 최상단 레이어) 아래,
-            본문 콘텐츠보다는 뒤(z-0)에 깔려 화면 하단에 고정된다. 넓은 데스크톱
-            화면에서 이미지가 뷰포트 끝까지 늘어나지 않도록 앱 본문과 같은
-            max-w-[430px]로 폭을 제한하고, 좌우 마진을 둔다. */}
+            본문 콘텐츠보다는 뒤(z-0)에 깔려 화면 하단에 고정된다. 폭은 본문과 같이
+            제한하고, 높이도 화면의 1/3 수준으로 캡해 콘텐츠를 침범하지 않게 한다. */}
         <div className="fixed inset-x-0 bottom-0 z-0 flex justify-center pointer-events-none">
           <img
             src="/final_image.png"
             alt=""
             aria-hidden
-            className="w-full max-w-[430px] px-6 object-contain object-bottom select-none"
+            className="w-full max-w-[430px] max-h-[34vh] px-6 object-contain object-bottom select-none"
           />
         </div>
         <div className="relative z-10 max-w-[430px] mx-auto">
@@ -538,10 +578,16 @@ export function MeetingPage() {
             onBack={() => setView('adjust')}
           />
         </div>
-        <div className="relative z-10 max-w-[430px] mx-auto px-[22px] pt-6 pb-4 text-center">
+        {/* 앞으로(조율→확정) 이동이라 오른쪽에서 미끄러져 들어온다 */}
+        <motion.div
+          initial={{ opacity: 0, x: 32 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={spring}
+          className="relative z-10 max-w-[430px] mx-auto px-[22px] pt-6 pb-4 text-center"
+        >
           <Enter>
             <div data-testid="confirmed-card" className="flex flex-col items-center gap-1.5 pt-4">
-              <p className="font-galmuri9 text-[12px] font-black tracking-[1.5px] text-white/80">
+              <p className="font-galmuri9 text-[14px] font-black tracking-[1.5px] text-white/85">
                 {withCharacterIcons('탕탕! 회의 소집 완료 🐯')}
               </p>
               <p className="font-galmuri11 text-[16px] font-bold text-white/90">
@@ -640,16 +686,18 @@ export function MeetingPage() {
             </motion.button>
           )}
           <Footer dark />
-        </div>
+        </motion.div>
       </div>
     )
   }
 
   const range = meeting ? parseDateRange(meeting.date_range) : null
   const submitted = rows[selected]?.submitted_at
+  // 확정 화면에서 되돌아온 경우에만 왼쪽에서 미끄러져 들어온다(뒤로 이동의 방향감)
+  const cameBackFromDone = lastViewRef.current === 'done'
 
   return (
-    <div className="min-h-screen bg-app text-ink">
+    <div key="adjust-view" className="min-h-screen bg-app text-ink">
       <div className="max-w-[430px] mx-auto">
         <StepTabs
           current={1}
@@ -657,12 +705,17 @@ export function MeetingPage() {
           onStepClick={() => setView('done')}
           onBack={showSavedPanel ? () => setShowSavedPanel(false) : () => navigate('/')}
           onForward={() => setView('done')}
-          forwardDisabled
+          forwardDisabled={!meeting?.confirmed_slot}
         />
       </div>
-      <div className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4">
+      <motion.div
+        initial={cameBackFromDone ? { opacity: 0, x: -32 } : false}
+        animate={{ opacity: 1, x: 0 }}
+        transition={spring}
+        className="max-w-[430px] mx-auto px-[22px] pt-2 pb-4"
+      >
         <Enter>
-          <header className="mb-4 px-0.5">
+          <header className="mb-7 px-0.5">
             <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
               <h1 data-testid="meeting-title" className="font-galmuri11 text-[22px] font-black tracking-[-1px]">
                 {withCharacterIcons(meeting?.title ?? '')}
@@ -671,7 +724,7 @@ export function MeetingPage() {
               {rows.length > 0 && (
                 <span className="flex items-center gap-0.5">
                   {rows.map((r) => (
-                    <CharacterIcon key={r.id} code={r.character} size={16} />
+                    <CharacterIcon key={r.id} code={r.character} size={18} />
                   ))}
                 </span>
               )}
@@ -858,30 +911,31 @@ export function MeetingPage() {
             />
           )}
 
-          <div className="mt-6 mb-2.5 space-y-1.5">
-            {pendingRows.length > 0 && (
-              <div className="flex items-center gap-2 bg-surface border border-line rounded-full px-3.5 py-2">
-                <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={22} />
-                <p className="text-[12.5px] font-bold text-ink">
-                  {pendingRows.length === 1 ? (
-                    <>
-                      모두가 <b className="font-black text-accent">{pendingRows[0].name}</b>님만 기다리고
-                      있어요!
-                    </>
-                  ) : (
-                    <>
-                      아직 <b className="font-black text-accent">{pendingRows.length}명</b>의 동료들이 눈치
-                      보는 중 👀
-                    </>
-                  )}
-                </p>
-              </div>
-            )}
-            <p className="font-galmuri11 text-[13px] font-bold text-ink-muted px-0.5">
-              내 이름을 누르고, 되는 날만 콕 집어 모두를 구원해 주세요! 애매하면{' '}
-              <b className="font-black text-accent">주황</b>으로!
-            </p>
-          </div>
+          {/* 대기 안내 — 박스 없이 아이콘 무리 + 한 줄. 어떻게 하라는 설명은
+              위 추천 카드(비상 상태)가 맡아서 여기는 상태만 말한다. */}
+          {pendingRows.length > 0 && (
+            <div className="mt-8 mb-3 px-0.5 flex items-center gap-2">
+              <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={22} />
+              <p className="text-[12.5px] font-bold text-ink-muted">
+                {pendingRows.length === 1
+                  ? fillTemplate(
+                      waitOneTpl,
+                      '{name}',
+                      <b key="name" className="font-black text-accent">
+                        {pendingRows[0].name}
+                      </b>,
+                    )
+                  : fillTemplate(
+                      waitManyTpl,
+                      '{n}',
+                      <b key="n" className="font-black text-accent">
+                        {pendingRows.length}명
+                      </b>,
+                    )}
+              </p>
+            </div>
+          )}
+          {pendingRows.length === 0 && <div className="mt-8" />}
           <PersonTabs
             people={personTabsData}
             selected={selected}
@@ -895,7 +949,7 @@ export function MeetingPage() {
           />
 
           {people[selected] && (
-            <div className="mt-2.5">
+            <div className="mt-4">
               {showSavedPanel ? (
                 <motion.div
                   key="saved-panel"
@@ -929,21 +983,23 @@ export function MeetingPage() {
                   >
                     {pendingRows.length > 0 && <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={20} />}
                     <span className="text-[12.5px] font-bold text-ink-muted">
-                      {pendingRows.length > 0 ? (
-                        pendingRows.length === 1 ? (
-                          <>
-                            <b className="font-black text-accent">{pendingRows[0].name}</b>님 입력만
-                            기다리면 돼요!
-                          </>
-                        ) : (
-                          <>
-                            아직 <b className="font-black text-accent">{pendingRows.length}명</b>이 고민
-                            중이에요
-                          </>
-                        )
-                      ) : (
-                        '모두 입력을 마쳤어요! 위에서 추천 시간을 확인해보세요.'
-                      )}
+                      {pendingRows.length > 0
+                        ? pendingRows.length === 1
+                          ? fillTemplate(
+                              savedWaitOneTpl,
+                              '{name}',
+                              <b key="name" className="font-black text-accent">
+                                {pendingRows[0].name}
+                              </b>,
+                            )
+                          : fillTemplate(
+                              savedWaitManyTpl,
+                              '{n}',
+                              <b key="n" className="font-black text-accent">
+                                {pendingRows.length}명
+                              </b>,
+                            )
+                        : '모두 입력을 마쳤어요! 위에서 추천 시간을 확인해보세요.'}
                     </span>
                   </motion.div>
                   <motion.button
@@ -994,6 +1050,7 @@ export function MeetingPage() {
                   <AvailabilityGrid
                     person={people[selected]}
                     personCharacter={rows[selected]?.character}
+                    monday={monday}
                     onCycleCell={cycleCell}
                     hours={hours}
                     onCycleDay={cycleDay}
@@ -1036,7 +1093,7 @@ export function MeetingPage() {
           )}
         </div>
         <Footer />
-      </div>
+      </motion.div>
     </div>
   )
 }

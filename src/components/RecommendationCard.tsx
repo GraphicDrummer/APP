@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { DAYS, key, type RecommendResult, type WindowEval } from '../engine'
 import { hhmm } from '../lib/slots'
 import { CharacterIcon } from './CharacterIcon'
+import { LADDER_GUIDE, pickOne } from '../lib/copy'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 
 interface Props {
@@ -114,6 +116,9 @@ export function RecommendationCard({
   const isPerfect = R.perfect.length > 0
   const state = confirmedSlot ? 'confirmed' : isPerfect ? 'perfect' : 'ladder'
 
+  // 비상 카드 안내 문구 — 화면을 새로 열 때마다 조금씩 다른 멘트(마운트 시 1회 고정)
+  const guide = useMemo(() => pickOne(LADDER_GUIDE), [])
+
   // 차선책 옵션: ① 애매 허용(l1) → ② 일부 제외(l2)
   const options: { label: string; w: WindowEval; cost: string }[] = []
   if (R.l1) options.push({ label: '애매한 시간 포함', w: R.l1, cost: `${R.l1.softNames.join(', ')} 양보` })
@@ -172,12 +177,21 @@ export function RecommendationCard({
                 🚨 비상! 완벽한 날이 없습니다.
               </p>
             </div>
-            <p className="text-[13px] font-bold text-ink-muted mt-3.5 leading-[1.6]">
-              누군가의 한 걸음 양보가 시급합니다.
-              <br />
-              <span className="text-ink">차선책을 확인해 보세요!</span>
+            {/* 어떻게 하면 되는지가 이 카드 본문에 들어간다 — 화면 여기저기 흩어져
+                있던 설명을 한 곳으로 모아 텍스트 밀도를 낮췄다 */}
+            <p className="text-[13px] font-bold text-ink-muted mt-3.5 leading-[1.7]">
+              {guide.split('주황')[0]}
+              {guide.includes('주황') && (
+                <>
+                  <b className="font-black text-accent">주황</b>
+                  {guide.split('주황')[1]}
+                </>
+              )}
             </p>
-            <div className="mt-4 flex flex-col gap-2.5">
+            {options.length > 0 && (
+              <p className="text-[12.5px] font-black text-ink mt-3">차선책을 확인해 보세요!</p>
+            )}
+            <div className="mt-3 flex flex-col gap-2.5">
               {options.map(({ label, w, cost }, i) => (
                 <Rise
                   key={key(w.d, w.h)}

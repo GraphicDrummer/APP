@@ -89,15 +89,25 @@ export function StepTabs({
           {STEPS.map((label, i) => {
             const active = i === current
             const canClick = !!onStepClick && !!clickable[i] && !active
-            const cls = `px-3 py-[3px] rounded-full font-galmuri9 text-[11px] font-black text-center transition-colors duration-[120ms] motion-reduce:transition-none ${
+            const cls = `relative px-3 py-[3px] rounded-full font-galmuri9 text-[11px] font-black text-center transition-colors duration-[120ms] motion-reduce:transition-none ${
               active
                 ? dark
-                  ? 'border border-white text-white'
-                  : 'border border-accent text-accent'
+                  ? 'text-white'
+                  : 'text-accent'
                 : dark
                   ? 'text-white/50'
                   : 'text-ink-muted/50'
             }`
+            // 활성 알약 테두리는 layoutId 공유 요소 — 단계가 바뀌면 이전 위치에서
+            // 새 위치로 미끄러지듯 이동한다(화면 전환으로 리마운트돼도 이어짐).
+            const pill = active && (
+              <motion.span
+                layoutId="step-active-pill"
+                transition={spring}
+                aria-hidden
+                className={`absolute inset-0 rounded-full border ${dark ? 'border-white' : 'border-accent'}`}
+              />
+            )
             return canClick ? (
               <motion.button
                 key={label}
@@ -110,11 +120,13 @@ export function StepTabs({
                 transition={pressSpring}
                 className={`${cls} cursor-pointer`}
               >
-                {label}
+                {pill}
+                <span className="relative">{label}</span>
               </motion.button>
             ) : (
               <div key={label} role="tab" aria-selected={active} data-testid={`step-${i}`} className={cls}>
-                {label}
+                {pill}
+                <span className="relative">{label}</span>
               </div>
             )
           })}

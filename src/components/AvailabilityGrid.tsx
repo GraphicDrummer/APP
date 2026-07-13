@@ -38,6 +38,8 @@ interface Props {
   hintCell?: { d: number; h: number } | null
   /** 지금 칠하는 사람의 캐릭터 코드 — 있으면 "OO님의 시간" 앞에 아이콘 표시 */
   personCharacter?: string | null
+  /** 그 주 월요일 날짜 — 있으면 요일 헤더가 "23(월)"처럼 실제 날짜와 함께 표시된다 */
+  monday?: Date | null
 }
 
 // 개별 칸 — 헤더 일괄 변경 시 자기 순서(index)에 맞춰 살짝 커졌다 돌아오는 펄스를 재생한다.
@@ -154,7 +156,7 @@ function HeaderCell({
       animate={controls}
       whileTap={press}
       transition={pressSpring}
-      className={`w-full h-[28px] rounded-full border border-line text-[11px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
+      className={`w-full h-[30px] rounded-full border text-[10.5px] font-black cursor-pointer transition-colors duration-[120ms] motion-reduce:transition-none ${style}`}
     >
       {children}
     </motion.button>
@@ -180,12 +182,12 @@ function uniformState(states: DisplayState[]): DisplayState | null {
   return states.every((s) => s === states[0]) ? states[0] : null
 }
 
-// 헤더 버튼 — 기본은 흰 아웃라인 알약, 열 전체가 같은 상태면 그 상태의 색을 입어
-// 인과를 보여준다 (테두리는 셀과 동일하게 항상 진한 픽셀 테두리)
+// 헤더 버튼 — 기본(비어있는 열/행)은 셀보다 옅은 테두리·회색 글자로 한 단계
+// 뒤로 물러나고, 열 전체가 같은 상태면 그 상태의 색을 입어 인과를 보여준다.
 const HEADER_STYLE: Record<string, string> = {
-  available: 'bg-primary text-white',
-  soft: 'bg-soft-bg text-soft-ink',
-  blocked: 'bg-white text-ink',
+  available: 'bg-primary text-white border-line',
+  soft: 'bg-soft-bg text-soft-ink border-line',
+  blocked: 'bg-white text-ink-muted border-line/40',
 }
 
 // 요일×시간 그리드 — 칸을 누르면 불가(기본) → 가능 → 애매 → 불가 순으로 순환
@@ -198,8 +200,17 @@ export function AvailabilityGrid({
   cascade = null,
   hintCell = null,
   personCharacter = null,
+  monday = null,
 }: Props) {
   const cellState = (d: number, h: number): DisplayState => person.cells[key(d, h)] ?? 'blocked'
+
+  // 요일 헤더 라벨 — 실제 날짜가 있으면 "23(월)", 없으면(데모 등) 요일만
+  const dayLabel = (i: number): string => {
+    if (!monday) return DAYS[i]
+    const d = new Date(monday)
+    d.setDate(d.getDate() + i)
+    return `${d.getDate()}(${DAYS[i]})`
+  }
 
   const scrollRef = useRef<HTMLDivElement>(null)
   const dragHandlers = useDragScroll(scrollRef)
@@ -243,10 +254,11 @@ export function AvailabilityGrid({
 
       <div className="relative">
         <div ref={scrollRef} {...dragHandlers} className={dragScrollCls}>
-          <table className="min-w-[340px] w-full table-fixed border-separate border-spacing-[4px]">
+          <table className="min-w-[360px] w-full table-fixed border-separate border-spacing-[4px]">
             <thead>
               <tr>
-                <th className="w-11" />
+                {/* 시간 라벨 열 — "09:00"이 알약 안에서 좌우 숨 쉴 만큼의 폭 */}
+                <th className="w-[54px]" />
                 {DAYS.map((d, i) => {
                   const colState = uniformState(hours.map((h) => cellState(i, h)))
                   const style = HEADER_STYLE[colState ?? 'blocked']
@@ -255,15 +267,15 @@ export function AvailabilityGrid({
                       {onCycleDay ? (
                         <HeaderCell
                           testId={`day-${i}`}
-                          ariaLabel={`${d}요일 전체 순환`}
+                          ariaLabel={`${dayLabel(i)} 전체 순환`}
                           onClick={() => onCycleDay(i)}
                           style={style}
                           hint={!!hintCell && i === 0}
                         >
-                          {d}
+                          {dayLabel(i)}
                         </HeaderCell>
                       ) : (
-                        <span className="block text-[11px] font-black text-ink">{d}</span>
+                        <span className="block text-[11px] font-black text-ink">{dayLabel(i)}</span>
                       )}
                     </th>
                   )

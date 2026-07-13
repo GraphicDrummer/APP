@@ -74,6 +74,23 @@ const EMOJI_CHARACTER: Record<string, ParticipantCharacter> = {
   '🐱': 'cat',
 }
 
+/** 캐릭터 코드 → 이모지 (역방향). 컨페티 등 캔버스에서 아이콘 대신 이모지로 표현할 때 쓴다 */
+export const CHARACTER_EMOJI: Record<ParticipantCharacter, string> = {
+  rat: '🐭',
+  ox: '🐮',
+  tiger: '🐯',
+  rabbit: '🐰',
+  dragon: '🐲',
+  snake: '🐍',
+  horse: '🐴',
+  sheep: '🐏',
+  monkey: '🐵',
+  rooster: '🐔',
+  dog: '🐶',
+  pig: '🐷',
+  cat: '🐱',
+}
+
 const EMOJI_PATTERN = /[🐭🐮🐯🐰🐲🐍🐴🐏🐵🐔🐶🐷🐱]/gu
 
 /**
@@ -103,7 +120,9 @@ export function withCharacterIcons(text: string): ReactNode[] {
         srcSet: characterIconSrcSet(code),
         alt: '',
         'aria-hidden': true,
-        className: 'inline-block w-[1em] h-[1em] align-[-0.15em] object-contain mx-[1px]',
+        // 이모지(글자)보다 아이콘이 시각적으로 작아 보여서 1.3em으로 키운다 —
+        // 텍스트 크기에 비례해 균형이 맞도록 em 단위 유지
+        className: 'inline-block w-[1.3em] h-[1.3em] align-[-0.3em] object-contain mx-[1.5px]',
       }),
     )
   })

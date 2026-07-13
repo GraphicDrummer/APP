@@ -342,48 +342,44 @@ export function CreateMeetingPage() {
 
   if (link) {
     const path = new URL(link).pathname
-    const code = path.split('/').pop() ?? ''
 
-    // 참여/관리자 링크 카드 — 두 카드가 같은 골격(왼쪽 라벨+코드 / 오른쪽 버튼 2개)을
-    // 공유해 영역이 나란히 맞는다. 코드가 곧 링크(/m/코드)라 코드를 누르면 복사된다.
+    // 참여/관리자 링크 카드 — 두 카드가 같은 골격(왼쪽 라벨+링크 미리보기 /
+    // 오른쪽 버튼 2개)을 공유해 영역이 나란히 맞는다. 공유 코드는 앱 어디에도
+    // 입력할 곳이 없는 정보라 크게 보여주지 않는다 — 복사될 링크만 작게 확인시켜준다.
     // 컴포넌트가 아니라 렌더 헬퍼 함수로 호출한다(리렌더마다 리마운트되는 걸 방지).
     const linkCard = ({
       label,
       sub,
-      code: codeText,
+      url,
       copiedNow,
       onCopy,
       onKakao,
       kakaoLabel,
       kakaoTestId,
       copyTestId,
-      codeTestId,
+      urlTestId,
     }: {
       label: string
       sub: string
-      code: string
+      url: string
       copiedNow: boolean
       onCopy: () => void
       onKakao: () => void
       kakaoLabel: string
       kakaoTestId: string
       copyTestId?: string
-      codeTestId?: string
+      urlTestId?: string
     }) => (
       <div className="flex items-center gap-3">
         <div className="flex-1 min-w-0">
           <CardLabel>{label}</CardLabel>
-          <p className="text-[10.5px] font-bold text-ink-muted/60 mt-0.5">{sub}</p>
-          <motion.button
-            type="button"
-            data-testid={codeTestId}
-            onClick={onCopy}
-            whileTap={press}
-            transition={pressSpring}
-            className="font-galmuri11 text-[24px] font-black tracking-[0.5px] text-accent mt-1.5 cursor-pointer"
+          <p className="text-[10.5px] font-bold text-ink-muted/60 mt-1 leading-snug">{sub}</p>
+          <p
+            data-testid={urlTestId}
+            className={`text-[11px] font-bold truncate mt-2 ${copiedNow ? 'text-primary' : 'text-ink-muted/50'}`}
           >
-            {copiedNow ? '복사됐어요!' : codeText}
-          </motion.button>
+            {copiedNow ? '복사됐어요!' : url}
+          </p>
         </div>
         <div className="flex flex-col gap-1.5 flex-none w-[150px]">
           <motion.button
@@ -438,14 +434,14 @@ export function CreateMeetingPage() {
           <Enter delay={0.08} className={`${cardCls} p-4 mt-6`}>
             {linkCard({
               label: '참여 링크',
-              sub: '단톡방 공유용 · 코드를 누르면 복사돼요',
-              code,
+              sub: '단톡방 공유용',
+              url: link.replace(/^https?:\/\//, ''),
               copiedNow: copied,
               onCopy: () => void copyLink(),
               onKakao: () => void shareLink(),
               kakaoLabel: '카카오톡 공유하기',
               kakaoTestId: 'share-link-kakao',
-              codeTestId: 'share-link',
+              urlTestId: 'share-link',
             })}
           </Enter>
 
@@ -453,7 +449,7 @@ export function CreateMeetingPage() {
             {linkCard({
               label: '관리자 링크',
               sub: '주최자 보관용 · 잃어버리면 다시 찾을 수 없어요',
-              code,
+              url: (adminLink ?? '').replace(/^https?:\/\//, ''),
               copiedNow: adminCopied,
               onCopy: () => void copyAdminLink(),
               onKakao: () => void shareAdminLink(),
