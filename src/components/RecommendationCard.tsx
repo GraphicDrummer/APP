@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { DAYS, key, type RecommendResult, type WindowEval } from '../engine'
 import { hhmm } from '../lib/slots'
 import { CharacterIcon } from './CharacterIcon'
+import { withCharacterIcons } from '../lib/characters'
 import { LADDER_GUIDE, pickOne } from '../lib/copy'
 import { press, pressSpring, riseIn, spring, STAGGER } from '../lib/motion'
 
@@ -119,11 +120,20 @@ export function RecommendationCard({
   // 비상 카드 안내 문구 — 화면을 새로 열 때마다 조금씩 다른 멘트(마운트 시 1회 고정)
   const guide = useMemo(() => pickOne(LADDER_GUIDE), [])
 
-  // 차선책 옵션: ① 애매 허용(l1) → ② 일부 제외(l2)
+  // 차선책 옵션: ① 애매 허용(l1) → ② 일부 제외(l2) → ③ 최다 참석(l3, 최후 폴백)
+  // l3는 필참끼리도 겹치는 시간이 없어 ①②가 전부 비었을 때 그나마 가장 많이
+  // 모이는 시간을 제안한다 — 어떤 상황에서도 빈손으로 보내지 않는다.
   const options: { label: string; w: WindowEval; cost: string }[] = []
   if (R.l1) options.push({ label: '애매한 시간 포함', w: R.l1, cost: `${R.l1.softNames.join(', ')} 양보` })
   for (const w of R.l2.slice(0, 2 - options.length)) {
     options.push({ label: '일부 제외', w, cost: `${w.missingOpt.join(', ')} 제외` })
+  }
+  if (options.length === 0) {
+    for (const w of R.l3.slice(0, 2)) {
+      const missing = [...w.blockingReq, ...w.missingOpt]
+      const cost = missing.length > 2 ? `${missing.length}명 불참` : `${missing.join(', ')} 불참`
+      options.push({ label: `최다 참석 ${w.reqAvail + w.optAvail}/${total}명`, w, cost })
+    }
   }
 
   const confirmedDate = confirmedSlot ? new Date(confirmedSlot) : null
@@ -170,7 +180,7 @@ export function RecommendationCard({
             className="bg-white border border-line rounded-card p-5"
           >
             <p className="font-galmuri9 text-[12px] font-black tracking-[1px] text-danger">
-              🚨 비상! 완벽한 날이 없습니다.
+              {withCharacterIcons('🚨 비상! 완벽한 날이 없습니다.')}
             </p>
             {/* 어떻게 하면 되는지가 이 카드 본문에 들어간다 — 화면 여기저기 흩어져
                 있던 설명을 한 곳으로 모아 텍스트 밀도를 낮췄다 */}
@@ -222,7 +232,8 @@ export function RecommendationCard({
                 <CharacterIcon data-testid="bottleneck-character" code={bottleneckCharacter} size={28} />
                 <p className="text-[11.5px] font-bold text-soft-ink leading-[1.6]">
                   <b className="font-black text-accent">{R.bottleneck}</b>님만 시간을 내주시면 가능한
-                  시간이 <b className="font-black text-primary">{R.bestGain}개</b> 더 생긴다는 건 절대 비밀입니다...! 🤫
+                  시간이 <b className="font-black text-primary">{R.bestGain}개</b>
+                  {withCharacterIcons(' 더 생긴다는 건 절대 비밀입니다...! 🤫')}
                 </p>
               </Rise>
             )}

@@ -82,7 +82,13 @@ export function PersonTabs({ people, selected, onSelect, onToggleRole, hintFirst
     <div>
       {completed.length > 0 && (
         <div className="flex items-center gap-2 mb-2.5 px-0.5">
-          <CharacterAvatarStack codes={completed.map((p) => p.character)} size={24} />
+          {/* moveIds — 대기 무리(위)와 layoutId를 공유해, 저장을 마친 사람의 아바타가
+              대기 줄에서 이 완료 줄로 미끄러져 내려온다 */}
+          <CharacterAvatarStack
+            codes={completed.map((p) => p.character)}
+            moveIds={completed.map((p) => p.id)}
+            size={24}
+          />
           <span className="text-[10.5px] font-bold text-ink-muted/70">{completed.length}명 완료</span>
         </div>
       )}

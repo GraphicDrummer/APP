@@ -34,6 +34,9 @@ export interface RecommendResult {
   perfect: WindowEval[]
   l1: WindowEval | null
   l2: WindowEval[]
+  /** 완화 사다리 3단계(최후 폴백) — 필참끼리도 겹치는 시간이 없어 l1/l2가 전부
+   *  비었을 때, 그나마 가장 많이 모일 수 있는 상위 후보. 항상 뭔가는 제안한다. */
+  l3: WindowEval[]
   bottleneck: string | null
   bestGain: number
   optCount: number
@@ -121,6 +124,16 @@ export function recommend(ppl: Person[], hours: readonly number[] = HOURS): Reco
     l2 = l2.slice(0, 2)
   }
 
+  // ladder rung 3 (최후 폴백): 필참끼리도 겹치는 시간이 전혀 없으면 l1/l2가 전부
+  // 비는데, 그래도 빈손으로 보내지 않는다 — 참석 인원이 가장 많은 상위 후보 2개.
+  // ws는 이미 (필참 불참 적은 순 → 애매 적은 순 → 선택 참석 많은 순)으로 정렬돼 있다.
+  let l3: WindowEval[] = []
+  if (perfect.length === 0 && l2.length === 0) {
+    l3 = ws.filter((w) => w.reqAvail + w.optAvail > 0).slice(0, 2)
+    // l1과 같은 창이면 중복 제안이므로 제외
+    if (l1) l3 = l3.filter((w) => !(w.d === l1.d && w.h === l1.h))
+  }
+
   // bottleneck: who unlocks the most perfect windows if ignored
   let bottleneck: string | null = null
   let bestGain = 0
@@ -136,5 +149,5 @@ export function recommend(ppl: Person[], hours: readonly number[] = HOURS): Reco
     }
   }
 
-  return { ws, perfect, l1, l2, bottleneck, bestGain, optCount, reqCount }
+  return { ws, perfect, l1, l2, l3, bottleneck, bestGain, optCount, reqCount }
 }

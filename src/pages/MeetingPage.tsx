@@ -352,6 +352,9 @@ export function MeetingPage() {
     setSaveState('idle')
   }
 
+  // 헤더 일괄 변경 — 줄 전체가 같은 상태면 그 상태 기준으로 순환하고(가능→애매→불가),
+  // 상태가 섞여 있으면 '가능'으로 덮어쓴다. (이전엔 섞이면 애매로 덮어서, 날짜 헤더
+  // 다음 시간 헤더를 누르면 교차 칸 때문에 전체가 애매가 되는 이상한 흐름이 있었다)
   const cycleDay = (d: number) => {
     dismissGridHint()
     setCascade({ kind: 'day', line: d, nonce: Date.now() })
@@ -361,7 +364,7 @@ export function MeetingPage() {
         if (i !== selected) return p
         const states = hours.map((h) => p.cells[`${d}-${h}`] ?? 'blocked')
         const uniform = states.every((s) => s === states[0]) ? states[0] : null
-        const next = uniform ? NEXT_STATE[uniform] : 'soft'
+        const next = uniform ? NEXT_STATE[uniform] : 'available'
         const cells = { ...p.cells }
         for (const h of hours) {
           if (next) cells[`${d}-${h}`] = next
@@ -383,7 +386,7 @@ export function MeetingPage() {
         const days = [0, 1, 2, 3, 4]
         const states = days.map((d) => p.cells[`${d}-${h}`] ?? 'blocked')
         const uniform = states.every((s) => s === states[0]) ? states[0] : null
-        const next = uniform ? NEXT_STATE[uniform] : 'soft'
+        const next = uniform ? NEXT_STATE[uniform] : 'available'
         const cells = { ...p.cells }
         for (const d of days) {
           if (next) cells[`${d}-${h}`] = next
@@ -593,6 +596,26 @@ export function MeetingPage() {
               <p className="font-galmuri11 text-[16px] font-bold text-white/90">
                 {withCharacterIcons(meeting.title)}
               </p>
+              {/* 참여자 전원이 순서대로 폴짝 뛰는 축하 웨이브 — 확정 화면의 히어로
+                  모먼트를 캐릭터들이 함께 기뻐하는 장면으로 마무리한다. 한 바퀴만. */}
+              {rows.length > 0 && (
+                <div data-testid="celebrate-wave" className="flex items-end gap-1 mt-2">
+                  {rows.map((r, i) => (
+                    <motion.span
+                      key={r.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: [10, 0, -8, 0] }}
+                      transition={{
+                        ...spring,
+                        y: { delay: 0.5 + i * 0.09, duration: 0.55, times: [0, 0.35, 0.65, 1], ease: 'easeInOut' },
+                        opacity: { delay: 0.5 + i * 0.09, duration: 0.2 },
+                      }}
+                    >
+                      <CharacterIcon code={r.character} size={26} />
+                    </motion.span>
+                  ))}
+                </div>
+              )}
               <p className="font-galmuri11 text-[19px] font-black text-white mt-4">{dayText}</p>
               <p
                 data-testid="confirmed-time"
@@ -742,7 +765,7 @@ export function MeetingPage() {
             </p>
             {meeting?.location && (
               <p data-testid="meeting-location" className="text-[11.5px] font-bold text-ink-muted mt-0.5">
-                📍 {meeting.location}
+                {withCharacterIcons(`📍 ${meeting.location}`)}
               </p>
             )}
           </header>
@@ -796,6 +819,7 @@ export function MeetingPage() {
                         type="date"
                         className="flex-1 min-w-0"
                         value={editDateStart}
+                        max={editDateEnd || undefined}
                         onChange={(e) => setEditDateStart(e.target.value)}
                       />
                     </LabeledRow>
@@ -805,10 +829,14 @@ export function MeetingPage() {
                         type="date"
                         className="flex-1 min-w-0"
                         value={editDateEnd}
+                        min={editDateStart || undefined}
                         onChange={(e) => setEditDateEnd(e.target.value)}
                       />
                     </LabeledRow>
                   </div>
+                  {editDateStart && editDateEnd && editDateEnd < editDateStart && (
+                    <p className="text-[11.5px] font-bold text-danger">종료일이 시작일보다 빠를 수 없어요.</p>
+                  )}
                   <div>
                     <span className="block pl-1 pb-1.5 text-[13px] font-bold text-ink-muted">
                       시간 범위
@@ -919,7 +947,11 @@ export function MeetingPage() {
               위 추천 카드(비상 상태)가 맡아서 여기는 상태만 말한다. */}
           {pendingRows.length > 0 && (
             <div className="mt-8 mb-3 px-0.5 flex items-center gap-2">
-              <CharacterAvatarStack codes={pendingRows.map((r) => r.character)} size={22} />
+              <CharacterAvatarStack
+                codes={pendingRows.map((r) => r.character)}
+                moveIds={pendingRows.map((r) => r.name)}
+                size={22}
+              />
               <p className="text-[12.5px] font-bold text-ink-muted">
                 {pendingRows.length === 1
                   ? fillTemplate(
@@ -975,9 +1007,12 @@ export function MeetingPage() {
                     initial={riseIn.initial}
                     animate={riseIn.animate}
                     transition={{ ...spring, delay: 0.15 }}
-                    className="text-[15px] font-black mt-3"
+                    className="flex items-center justify-center gap-1.5 text-[15px] font-black mt-3"
                   >
-                    {people[selected].id}님의 시간을 저장했어요!
+                    <CharacterIcon code={rows[selected]?.character} size={22} />
+                    <span>
+                      <b className="text-accent">{people[selected].id}</b>님의 시간을 저장했어요!
+                    </span>
                   </motion.p>
                   <motion.div
                     initial={riseIn.initial}

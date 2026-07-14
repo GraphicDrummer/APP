@@ -5,15 +5,17 @@
 // 템플릿의 {n}/{name}은 호출부에서 색을 입힌 JSX로 치환한다(fillTemplate).
 
 import type { ReactNode } from 'react'
+import { withCharacterIcons } from './characters'
 
 export function pickOne<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
-/** 템플릿에서 토큰({n} 등) 하나를 JSX로 치환 — 토큰은 템플릿에 정확히 한 번 있어야 한다 */
+/** 템플릿에서 토큰({n} 등) 하나를 JSX로 치환 — 토큰은 템플릿에 정확히 한 번 있어야 한다.
+ *  문자열 구간은 withCharacterIcons를 거쳐 이모지 위치 보정/아이콘 치환이 자동 적용된다. */
 export function fillTemplate(tpl: string, token: string, value: ReactNode): ReactNode[] {
   const [pre, post] = tpl.split(token)
-  return [pre, value, post ?? '']
+  return [...withCharacterIcons(pre), value, ...withCharacterIcons(post ?? '')]
 }
 
 /** 조율 화면 — 여러 명이 아직 미입력일 때 */

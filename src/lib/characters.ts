@@ -91,11 +91,42 @@ export const CHARACTER_EMOJI: Record<ParticipantCharacter, string> = {
   cat: '🐱',
 }
 
+// 아이콘 PNG마다 그림 주변 투명 여백이 달라 같은 박스에 넣으면 크기가 들쭉날쭉해
+// 보인다. 각 파일의 실제 콘텐츠 바운딩 박스(알파>8인 픽셀 범위)를 캔버스로 측정해
+// 보정 배율을 캘리브레이션했다 — 캔버스 대비 콘텐츠 비율이 0.63(고양이)~0.92(용)로
+// 제각각이라, 모두 0.85 수준으로 보이도록 배율을 맞춘다(target / measured).
+// 아이콘을 그리는 모든 곳(CharacterIcon, withCharacterIcons)이 이 값을 공유한다.
+export const ICON_SCALE: Record<ParticipantCharacter, number> = {
+  rat: 1.18, // 측정 비율 0.72
+  ox: 0.97, // 0.88
+  tiger: 1.15, // 0.74
+  rabbit: 0.95, // 0.89
+  dragon: 0.92, // 0.92
+  snake: 1.15, // 0.74
+  horse: 1.02, // 0.83
+  sheep: 1.08, // 0.78
+  monkey: 1.0, // 0.85
+  rooster: 1.02, // 0.83
+  dog: 1.23, // 0.69
+  pig: 1.23, // 0.69
+  cat: 1.35, // 0.63
+}
+
+/** 캐릭터 코드 → 여백 보정 배율. 알 수 없는 코드는 1 */
+export function iconScale(code: string | null | undefined): number {
+  return code && code in ICON_SCALE ? ICON_SCALE[code as ParticipantCharacter] : 1
+}
+
 const EMOJI_PATTERN = /[🐭🐮🐯🐰🐲🐍🐴🐏🐵🐔🐶🐷🐱]/gu
 
+// 캐릭터 외의 일반 그림 이모지(👀🤫🚨📍 등) — Galmuri 픽셀 폰트의 베이스라인보다
+// 이모지 글리프가 낮게 앉아서, 살짝 들어올려 시각적 중앙을 맞춘다.
+const PICTO_PATTERN = /(\p{Extended_Pictographic}(?:️)?)/gu
+
 /**
- * 텍스트를 파싱해 12지신+고양이 이모지를 캐릭터 아이콘 img로 인라인 교체한다.
- * 매칭되는 이모지가 없으면 원본 문자열 하나만 담긴 배열을 반환한다 — 호출부에서
+ * 텍스트를 파싱해 ① 12지신+고양이 이모지는 캐릭터 아이콘 img로 교체하고
+ * ② 나머지 그림 이모지는 Y축을 보정한 span으로 감싼다. 앱의 모든 이모지 표기가
+ * 이 함수 하나를 거치면 위치·크기 보정이 자동으로 통일된다.
  * `<>{withCharacterIcons(text)}</>` 형태로 그대로 렌더하면 된다.
  */
 export function withCharacterIcons(text: string): ReactNode[] {
@@ -104,7 +135,7 @@ export function withCharacterIcons(text: string): ReactNode[] {
   const matches = text.match(EMOJI_PATTERN) ?? []
   const nodes: ReactNode[] = []
   parts.forEach((part, i) => {
-    if (part) nodes.push(part)
+    if (part) nodes.push(...liftEmoji(part, i))
     const emoji = matches[i]
     if (!emoji) return
     const code = EMOJI_CHARACTER[emoji]
@@ -120,6 +151,7 @@ export function withCharacterIcons(text: string): ReactNode[] {
         srcSet: characterIconSrcSet(code),
         alt: '',
         'aria-hidden': true,
+        style: { transform: `scale(${iconScale(code)})` },
         // 아이콘 원본은 여백이 있어 같은 박스의 이모지보다 작아 보인다 — 글자보다
         // 확실히 크게(1.55em) 넣고, 베이스라인 아래로 내려 시각적 중앙을 맞춘다.
         className: 'inline-block w-[1.55em] h-[1.55em] align-[-0.38em] object-contain mx-[2px]',
@@ -127,4 +159,22 @@ export function withCharacterIcons(text: string): ReactNode[] {
     )
   })
   return nodes
+}
+
+/** 캐릭터가 아닌 일반 이모지를 Y축 보정 span으로 감싼다 */
+function liftEmoji(text: string, keyBase: number): ReactNode[] {
+  const segments = text.split(PICTO_PATTERN)
+  return segments.map((seg, j) =>
+    j % 2 === 1
+      ? createElement(
+          'span',
+          {
+            key: `emoji-${keyBase}-${j}`,
+            'aria-hidden': true,
+            className: 'inline-block translate-y-[-0.12em]',
+          },
+          seg,
+        )
+      : seg,
+  )
 }

@@ -559,6 +559,8 @@ export function CreateMeetingPage() {
               <AnimatePresence initial={false}>
                 {activeSlot === 'dates' && (
                   <EditorPanel key="ed-dates">
+                    {/* min/max로 달력에서부터 역순 선택을 막고, 직접 입력으로 어긋난
+                        경우엔 그 자리에서 바로 경고를 보여준다(제출 때까지 안 기다림) */}
                     <div className="flex gap-3">
                       <LabeledRow label="시작" className="flex-1">
                         <TextInput
@@ -566,6 +568,7 @@ export function CreateMeetingPage() {
                           type="date"
                           className="flex-1 min-w-0"
                           value={dateStart}
+                          max={dateEnd || undefined}
                           onChange={(e) => setDateStart(e.target.value)}
                         />
                       </LabeledRow>
@@ -575,13 +578,20 @@ export function CreateMeetingPage() {
                           type="date"
                           className="flex-1 min-w-0"
                           value={dateEnd}
+                          min={dateStart || undefined}
                           onChange={(e) => setDateEnd(e.target.value)}
                         />
                       </LabeledRow>
                     </div>
-                    <p className="pl-1 pt-2 text-[11.5px] font-bold text-ink-muted/60">
-                      이 기간 안에서 다들 가능한 시간을 찾아드려요
-                    </p>
+                    {dateStart && dateEnd && dateEnd < dateStart ? (
+                      <p data-testid="date-order-warning" className="pl-1 pt-2 text-[11.5px] font-bold text-danger">
+                        종료일이 시작일보다 빠를 수 없어요.
+                      </p>
+                    ) : (
+                      <p className="pl-1 pt-2 text-[11.5px] font-bold text-ink-muted/60">
+                        이 기간 안에서 다들 가능한 시간을 찾아드려요
+                      </p>
+                    )}
                   </EditorPanel>
                 )}
               </AnimatePresence>
